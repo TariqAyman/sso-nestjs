@@ -1,0 +1,16 @@
+// Tenant model schema
+model Tenant {
+  id         Int      @id @default(autoincrement())
+  uuid       String   @unique @default(uuid())
+  key        String   @unique
+  entityId   String   @map("entity_id")
+  loginUrl   String   @map("login_url")
+  logoutUrl  String?  @map("logout_url")
+  x509cert   String   @map("x509_cert")
+  metadata   Json?
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("tenants")
+}
