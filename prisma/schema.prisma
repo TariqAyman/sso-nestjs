@@ -11,7 +11,7 @@ datasource db {
 }
 
 model User {
-    id                Int       @id @default(autoincrement())
+    id                String    @id @default(uuid())
     email             String    @unique @db.VarChar(255)
     password          String    @db.VarChar(255)
     fullName          String    @map("full_name") @db.VarChar(255)
@@ -49,8 +49,8 @@ model User {
 }
 
 model SsoApplication {
-    id                  Int      @id @default(autoincrement())
-    userId              Int      @map("user_id")
+    id                  String   @id @default(uuid())
+    userId              String   @map("user_id")
     applicationName     String   @map("application_name") @db.VarChar(255)
     applicationUrl      String   @map("application_url") @db.VarChar(500)
     clientId            String   @unique @map("client_id") @db.VarChar(255)
@@ -78,12 +78,12 @@ model SsoApplication {
 }
 
 model Menu {
-    id          Int      @id @default(autoincrement())
+    id          String   @id @default(uuid())
     title       String   @db.VarChar(255)
     url         String   @db.VarChar(500)
     icon        String?  @db.VarChar(100)
     sortOrder   Int      @default(0) @map("sort_order")
-    parentId    Int?     @map("parent_id")
+    parentId    String?  @map("parent_id")
     status      String   @default("active") @db.VarChar(50)
     target      String   @default("_self") @db.VarChar(20)
     cssClass    String?  @map("css_class") @db.VarChar(100)
@@ -117,7 +117,7 @@ model Faq {
 
 model WebhookLog {
     id               Int       @id @default(autoincrement())
-    ssoApplicationId Int       @map("sso_application_id")
+    ssoApplicationId String    @map("sso_application_id")
     event            String    @db.VarChar(100)
     payload          String    @db.Text
     response         String?   @db.Text
@@ -137,7 +137,7 @@ model WebhookLog {
 
 model UserActivation {
     id        Int       @id @default(autoincrement())
-    userId    Int       @map("user_id")
+    userId    String    @map("user_id")
     token     String    @unique @db.VarChar(255)
     type      String    @db.VarChar(50) // email, phone, etc.
     expiresAt DateTime  @map("expires_at")
@@ -154,7 +154,7 @@ model UserActivation {
 
 model ForgotPassword {
     id        Int       @id @default(autoincrement())
-    userId    Int       @map("user_id")
+    userId    String    @map("user_id")
     token     String    @unique @db.VarChar(255)
     expiresAt DateTime  @map("expires_at")
     usedAt    DateTime? @map("used_at")
@@ -170,7 +170,7 @@ model ForgotPassword {
 
 model LastLogin {
     id            Int      @id @default(autoincrement())
-    userId        Int      @map("user_id")
+    userId        String   @map("user_id")
     ipAddress     String   @map("ip_address") @db.VarChar(45)
     userAgent     String?  @map("user_agent") @db.Text
     location      String?  @db.VarChar(255)
@@ -189,7 +189,7 @@ model LastLogin {
 
 model OauthConnection {
     id             Int       @id @default(autoincrement())
-    userId         Int       @map("user_id")
+    userId         String    @map("user_id")
     provider       String    @db.VarChar(50) // google, github, facebook, twitter, microsoft
     providerId     String    @map("provider_id") @db.VarChar(255)
     email          String?   @db.VarChar(255)
@@ -211,10 +211,10 @@ model OauthConnection {
 }
 
 model AuthorizationCode {
-    id            Int      @id @default(autoincrement())
+    id            String   @id @default(uuid())
     code          String   @unique @db.VarChar(255)
-    userId        Int      @map("user_id")
-    applicationId Int      @map("application_id")
+    userId        String   @map("user_id")
+    applicationId String   @map("application_id")
     redirectUri   String   @map("redirect_uri") @db.VarChar(500)
     scope         String   @db.VarChar(255)
     expiresAt     DateTime @map("expires_at")
@@ -228,10 +228,10 @@ model AuthorizationCode {
 }
 
 model RefreshToken {
-    id            Int      @id @default(autoincrement())
+    id            String   @id @default(uuid())
     token         String   @unique @db.VarChar(255)
-    userId        Int      @map("user_id")
-    applicationId Int      @map("application_id")
+    userId        String   @map("user_id")
+    applicationId String   @map("application_id")
     scope         String   @db.VarChar(255)
     expiresAt     DateTime @map("expires_at")
     createdAt     DateTime @default(now()) @map("created_at")
