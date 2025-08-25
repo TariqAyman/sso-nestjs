@@ -1,0 +1,244 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mysql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    id                Int       @id @default(autoincrement())
+    email             String    @unique @db.VarChar(255)
+    password          String    @db.VarChar(255)
+    fullName          String    @map("full_name") @db.VarChar(255)
+    firstName         String?   @map("first_name") @db.VarChar(100)
+    lastName          String?   @map("last_name") @db.VarChar(100)
+    avatar            String?   @db.VarChar(500)
+    emailVerified     Boolean   @default(false) @map("email_verified")
+    verified          Boolean   @default(false)
+    verifiedAt        DateTime? @map("verified_at")
+    role              String    @default("user") @db.VarChar(50)
+    status            String    @default("active") @db.VarChar(50)
+    twoFactorEnabled  Boolean   @default(false) @map("two_factor_enabled")
+    twoFactorSecret   String?   @map("two_factor_secret") @db.VarChar(255)
+    profilePicture    String?   @map("profile_picture") @db.VarChar(500)
+    timezone          String?   @db.VarChar(100)
+    language          String    @default("en") @db.VarChar(10)
+    lastLoginAt       DateTime? @map("last_login_at")
+    lastLoginIp       String?   @map("last_login_ip") @db.VarChar(45)
+    loginAttempts     Int       @default(0) @map("login_attempts")
+    lockedUntil       DateTime? @map("locked_until")
+    passwordChangedAt DateTime? @map("password_changed_at")
+    createdAt         DateTime  @default(now()) @map("created_at")
+    updatedAt         DateTime  @updatedAt @map("updated_at")
+
+    // Relations
+    userActivations    UserActivation[]
+    forgotPasswords    ForgotPassword[]
+    lastLogins         LastLogin[]
+    ssoApplications    SsoApplication[]
+    oauthConnections   OauthConnection[]
+    authorizationCodes AuthorizationCode[]
+    refreshTokens      RefreshToken[]
+
+    @@map("users")
+}
+
+model SsoApplication {
+    id                  Int      @id @default(autoincrement())
+    userId              Int      @map("user_id")
+    applicationName     String   @map("application_name") @db.VarChar(255)
+    applicationUrl      String   @map("application_url") @db.VarChar(500)
+    clientId            String   @unique @map("client_id") @db.VarChar(255)
+    clientSecret        String   @map("client_secret") @db.VarChar(255)
+    redirectUri         String   @map("redirect_uri") @db.VarChar(500)
+    scope               String?  @db.Text
+    status              String   @default("active") @db.VarChar(50)
+    allowedOrigins      String?  @map("allowed_origins") @db.Text
+    tokenExpirationTime Int      @default(3600) @map("token_expiration_time")
+    refreshTokenEnabled Boolean  @default(true) @map("refresh_token_enabled")
+    description         String?  @db.Text
+    logoUrl             String?  @map("logo_url") @db.VarChar(500)
+    webhookUrl          String?  @map("webhook_url") @db.VarChar(500)
+    webhookSecret       String?  @map("webhook_secret") @db.VarChar(255)
+    createdAt           DateTime @default(now()) @map("created_at")
+    updatedAt           DateTime @updatedAt @map("updated_at")
+
+    // Relations
+    user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+    webhookLogs        WebhookLog[]
+    authorizationCodes AuthorizationCode[]
+    refreshTokens      RefreshToken[]
+
+    @@map("sso_applications")
+}
+
+model Menu {
+    id          Int      @id @default(autoincrement())
+    title       String   @db.VarChar(255)
+    url         String   @db.VarChar(500)
+    icon        String?  @db.VarChar(100)
+    sortOrder   Int      @default(0) @map("sort_order")
+    parentId    Int?     @map("parent_id")
+    status      String   @default("active") @db.VarChar(50)
+    target      String   @default("_self") @db.VarChar(20)
+    cssClass    String?  @map("css_class") @db.VarChar(100)
+    permissions String?  @db.Text
+    createdAt   DateTime @default(now()) @map("created_at")
+    updatedAt   DateTime @updatedAt @map("updated_at")
+
+    // Self-referential relation
+    parent   Menu?  @relation("MenuHierarchy", fields: [parentId], references: [id])
+    children Menu[] @relation("MenuHierarchy")
+
+    @@map("menus")
+}
+
+model Faq {
+    id         Int      @id @default(autoincrement())
+    question   String   @db.Text
+    answer     String   @db.Text
+    category   String?  @db.VarChar(100)
+    sortOrder  Int      @default(0) @map("sort_order")
+    status     String   @default("active") @db.VarChar(50)
+    viewCount  Int      @default(0) @map("view_count")
+    helpful    Int      @default(0)
+    notHelpful Int      @default(0) @map("not_helpful")
+    tags       String?  @db.Text
+    createdAt  DateTime @default(now()) @map("created_at")
+    updatedAt  DateTime @updatedAt @map("updated_at")
+
+    @@map("faqs")
+}
+
+model WebhookLog {
+    id               Int       @id @default(autoincrement())
+    ssoApplicationId Int       @map("sso_application_id")
+    event            String    @db.VarChar(100)
+    payload          String    @db.Text
+    response         String?   @db.Text
+    status           String    @db.VarChar(50)
+    httpStatusCode   Int?      @map("http_status_code")
+    attempt          Int       @default(1)
+    errorMessage     String?   @map("error_message") @db.Text
+    deliveredAt      DateTime? @map("delivered_at")
+    nextRetryAt      DateTime? @map("next_retry_at")
+    createdAt        DateTime  @default(now()) @map("created_at")
+
+    // Relations
+    ssoApplication SsoApplication @relation(fields: [ssoApplicationId], references: [id], onDelete: Cascade)
+
+    @@map("webhook_logs")
+}
+
+model UserActivation {
+    id        Int       @id @default(autoincrement())
+    userId    Int       @map("user_id")
+    token     String    @unique @db.VarChar(255)
+    type      String    @db.VarChar(50) // email, phone, etc.
+    expiresAt DateTime  @map("expires_at")
+    usedAt    DateTime? @map("used_at")
+    ipAddress String?   @map("ip_address") @db.VarChar(45)
+    userAgent String?   @map("user_agent") @db.Text
+    createdAt DateTime  @default(now()) @map("created_at")
+
+    // Relations
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("user_activations")
+}
+
+model ForgotPassword {
+    id        Int       @id @default(autoincrement())
+    userId    Int       @map("user_id")
+    token     String    @unique @db.VarChar(255)
+    expiresAt DateTime  @map("expires_at")
+    usedAt    DateTime? @map("used_at")
+    ipAddress String?   @map("ip_address") @db.VarChar(45)
+    userAgent String?   @map("user_agent") @db.Text
+    createdAt DateTime  @default(now()) @map("created_at")
+
+    // Relations
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("forgot_passwords")
+}
+
+model LastLogin {
+    id            Int      @id @default(autoincrement())
+    userId        Int      @map("user_id")
+    ipAddress     String   @map("ip_address") @db.VarChar(45)
+    userAgent     String?  @map("user_agent") @db.Text
+    location      String?  @db.VarChar(255)
+    device        String?  @db.VarChar(255)
+    browser       String?  @db.VarChar(255)
+    os            String?  @db.VarChar(255)
+    successful    Boolean  @default(true)
+    failureReason String?  @map("failure_reason") @db.VarChar(255)
+    loginAt       DateTime @default(now()) @map("login_at")
+
+    // Relations
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("last_logins")
+}
+
+model OauthConnection {
+    id             Int       @id @default(autoincrement())
+    userId         Int       @map("user_id")
+    provider       String    @db.VarChar(50) // google, github, facebook, twitter, microsoft
+    providerId     String    @map("provider_id") @db.VarChar(255)
+    email          String?   @db.VarChar(255)
+    name           String?   @db.VarChar(255)
+    avatar         String?   @db.VarChar(500)
+    accessToken    String?   @map("access_token") @db.Text
+    refreshToken   String?   @map("refresh_token") @db.Text
+    tokenExpiresAt DateTime? @map("token_expires_at")
+    scope          String?   @db.Text
+    profileData    String?   @map("profile_data") @db.Text
+    connectedAt    DateTime  @default(now()) @map("connected_at")
+    lastUsedAt     DateTime? @map("last_used_at")
+
+    // Relations
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([userId, provider])
+    @@map("oauth_connections")
+}
+
+model AuthorizationCode {
+    id            Int      @id @default(autoincrement())
+    code          String   @unique @db.VarChar(255)
+    userId        Int      @map("user_id")
+    applicationId Int      @map("application_id")
+    redirectUri   String   @map("redirect_uri") @db.VarChar(500)
+    scope         String   @db.VarChar(255)
+    expiresAt     DateTime @map("expires_at")
+    createdAt     DateTime @default(now()) @map("created_at")
+
+    // Relations
+    user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+    application SsoApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+    @@map("authorization_codes")
+}
+
+model RefreshToken {
+    id            Int      @id @default(autoincrement())
+    token         String   @unique @db.VarChar(255)
+    userId        Int      @map("user_id")
+    applicationId Int      @map("application_id")
+    scope         String   @db.VarChar(255)
+    expiresAt     DateTime @map("expires_at")
+    createdAt     DateTime @default(now()) @map("created_at")
+
+    // Relations
+    user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+    application SsoApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+    @@map("refresh_tokens")
+}
