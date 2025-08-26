@@ -15,9 +15,12 @@ async function main() {
       email: "admin@opensso.com",
       password: adminPassword,
       fullName: "System Administrator",
-      role: "admin",
+      name: "System Administrator",
+      role: 1, // 1 = admin
+      type: 1, // 1 = system user
       verified: true,
       verifiedAt: new Date(),
+      emailVerifiedAt: new Date(),
       status: "active",
     },
   });
@@ -33,9 +36,12 @@ async function main() {
       email: "demo@opensso.com",
       password: userPassword,
       fullName: "Demo User",
-      role: "user",
+      name: "Demo User",
+      role: 0, // 0 = regular user
+      type: 0, // 0 = regular user
       verified: true,
       verifiedAt: new Date(),
+      emailVerifiedAt: new Date(),
       status: "active",
     },
   });
@@ -174,6 +180,79 @@ async function main() {
   });
 
   console.log("✅ Demo SSO application created:", demoApp.applicationName);
+
+  // Create sample microservice
+  const microService = await prisma.microService.upsert({
+    where: { name: "Auth Gateway" },
+    update: {},
+    create: {
+      name: "Auth Gateway",
+      secretId: "auth_gateway_" + Math.random().toString(36).substring(2, 15),
+      secretKey:
+        "secret_" +
+        Math.random().toString(36).substring(2, 15) +
+        Math.random().toString(36).substring(2, 15),
+    },
+  });
+
+  console.log("✅ Sample microservice created");
+
+  // Create sample permissions
+  const permissions = [
+    { name: "user.create", frontend: true },
+    { name: "user.read", frontend: true },
+    { name: "user.update", frontend: true },
+    { name: "user.delete", frontend: false },
+    { name: "application.create", frontend: true },
+    { name: "application.read", frontend: true },
+    { name: "application.update", frontend: true },
+    { name: "application.delete", frontend: false },
+  ];
+
+  for (const permission of permissions) {
+    await prisma.permission.upsert({
+      where: {
+        name_microServiceId: {
+          name: permission.name,
+          microServiceId: microService.id,
+        },
+      },
+      update: {},
+      create: {
+        ...permission,
+        microServiceId: microService.id,
+        guardName: "web",
+      },
+    });
+  }
+
+  console.log("✅ Sample permissions created");
+
+  // Create sample roles
+  const roles = [
+    { name: "admin", frontend: true },
+    { name: "user", frontend: true },
+    { name: "moderator", frontend: true },
+  ];
+
+  for (const role of roles) {
+    await prisma.role.upsert({
+      where: {
+        name_microServiceId: {
+          name: role.name,
+          microServiceId: microService.id,
+        },
+      },
+      update: {},
+      create: {
+        ...role,
+        microServiceId: microService.id,
+        guardName: "web",
+      },
+    });
+  }
+
+  console.log("✅ Sample roles created");
 
   console.log("🌱 Database seeding completed successfully!");
   console.log("");
