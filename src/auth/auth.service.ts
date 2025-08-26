@@ -11,6 +11,7 @@ import { UsersService } from "../users/users.service";
 import { CryptoService } from "../common/services/crypto.service";
 import { EmailService } from "../common/services/email.service";
 import { PrismaService } from "../common/prisma/prisma.service";
+import { NafathService, NafathProfile } from "./services/nafath.service";
 
 export interface LoginDto {
   email: string;
@@ -58,7 +59,8 @@ export class AuthService {
     private configService: ConfigService,
     private cryptoService: CryptoService,
     private emailService: EmailService,
-    private prisma: PrismaService
+    private prisma: PrismaService,
+    private nafathService: NafathService
   ) {}
 
   async validateUser(email: string, password: string): Promise<User | null> {
@@ -403,5 +405,241 @@ export class AuthService {
     return {
       message: "If the email exists, an activation link has been sent.",
     };
+  }
+
+  // Nafath SSO Methods
+
+  async initiateNafathAuth(
+    nationalId: string,
+    channel: "PUSH" | "QR" = "PUSH"
+  ): Promise<{
+    transactionId: string;
+    qrCode?: string;
+    expiresIn: number;
+    message: string;
+  }> {
+    try {
+      const result = await this.nafathService.initiateAuth(nationalId, channel);
+
+      this.logger.log(
+        `Nafath authentication initiated for NID: ${nationalId.substring(0, 4)}****`
+      );
+
+      return {
+        ...result,
+        message:
+          channel === "PUSH"
+            ? "Please approve the authentication request in your Nafath app"
+            : "Please scan the QR code with your Nafath app",
+      };
+    } catch (error) {
+      this.logger.error(`Failed to initiate Nafath auth: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async checkNafathStatus(transactionId: string): Promise<{
+    status: string;
+    profile?: any;
+  }> {
+    try {
+      const result =
+        await this.nafathService.checkTransactionStatus(transactionId);
+      return {
+        status: result.status,
+        profile: result.profile,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to check Nafath status: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async handleNafathCallback(
+    payload: any,
+    signature: string,
+    ipAddress: string,
+    userAgent: string
+  ): Promise<AuthResponse> {
+    try {
+      const profile = await this.nafathService.handleCallback(
+        payload,
+        signature
+      );
+
+      // Find or create user with Nafath profile
+      let user = await this.findOrCreateNafathUser(profile);
+
+      // Generate tokens
+      const tokens = await this.generateTokens(user);
+
+      // Record successful login
+      await this.usersService.recordLogin(user.id, ipAddress, userAgent);
+
+      this.logger.log(
+        `Nafath authentication successful for NID: ${profile.nationalId.substring(0, 4)}****`
+      );
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          verified: user.verified,
+          role: user.role,
+          twoFactorEnabled: user.twoFactorEnabled,
+        },
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresIn: this.getTokenExpirationTime(),
+      };
+    } catch (error) {
+      this.logger.error(`Nafath callback error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async verifyNafathTransaction(
+    transactionId: string,
+    ipAddress: string,
+    userAgent: string
+  ): Promise<AuthResponse> {
+    try {
+      const statusResult =
+        await this.nafathService.checkTransactionStatus(transactionId);
+
+      if (statusResult.status !== "APPROVED" || !statusResult.profile) {
+        throw new UnauthorizedException(
+          `Authentication ${statusResult.status.toLowerCase()}`
+        );
+      }
+
+      // Find or create user with Nafath profile
+      let user = await this.findOrCreateNafathUser(statusResult.profile);
+
+      // Generate tokens
+      const tokens = await this.generateTokens(user);
+
+      // Record successful login
+      await this.usersService.recordLogin(user.id, ipAddress, userAgent);
+
+      this.logger.log(
+        `Nafath verification successful for NID: ${statusResult.profile.nationalId.substring(0, 4)}****`
+      );
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          verified: user.verified,
+          role: user.role,
+          twoFactorEnabled: user.twoFactorEnabled,
+        },
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresIn: this.getTokenExpirationTime(),
+      };
+    } catch (error) {
+      this.logger.error(`Nafath verification error: ${error.message}`);
+      throw error;
+    }
+  }
+
+  private async findOrCreateNafathUser(profile: NafathProfile): Promise<User> {
+    // Try to find existing user by national ID or email
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: profile.email || `${profile.nationalId}@nafath.sa` },
+          // We could store national ID in a custom field if needed
+        ],
+      },
+    });
+
+    if (user) {
+      // Update user profile with latest Nafath data
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          fullName: profile.fullNameEn || profile.fullNameAr || user.fullName,
+          verified: true, // Nafath users are verified by default
+          lastLoginAt: new Date(),
+        },
+      });
+    } else {
+      // Create new user from Nafath profile
+      const email = profile.email || `${profile.nationalId}@nafath.sa`;
+      const fullName =
+        profile.fullNameEn ||
+        profile.fullNameAr ||
+        `Nafath User ${profile.nationalId.substring(0, 4)}****`;
+
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          password: "", // Nafath users don't need passwords
+          fullName,
+          verified: true,
+          emailVerified: !!profile.email, // Only verified if we have real email
+          role: "user",
+          status: "active",
+          language: profile.fullNameAr ? "ar" : "en",
+          lastLoginAt: new Date(),
+        },
+      });
+
+      // Create OAuth connection record
+      await this.prisma.oauthConnection.create({
+        data: {
+          userId: user.id,
+          provider: "nafath",
+          providerId: profile.nationalId,
+          email: profile.email,
+          name: fullName,
+          profileData: JSON.stringify({
+            nationalId: profile.nationalId,
+            fullNameAr: profile.fullNameAr,
+            fullNameEn: profile.fullNameEn,
+            dateOfBirth: profile.dateOfBirth,
+            nationality: profile.nationality,
+            mobile: profile.mobile,
+          }),
+          connectedAt: new Date(),
+          lastUsedAt: new Date(),
+        },
+      });
+
+      this.logger.log(`Created new Nafath user: ${email}`);
+    }
+
+    return user;
+  }
+
+  private async generateTokens(user: User): Promise<{
+    accessToken: string;
+    refreshToken: string;
+  }> {
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(payload),
+      this.jwtService.signAsync(
+        { ...payload, type: "refresh" },
+        {
+          expiresIn: this.configService.get("JWT_REFRESH_EXPIRES_IN", "7d"),
+        }
+      ),
+    ]);
+
+    // For Nafath, we'll skip storing refresh tokens in DB for now
+    // since they don't have an SSO application context
+    // TODO: Create a default "Nafath SSO" application for this
+
+    return { accessToken, refreshToken };
   }
 }

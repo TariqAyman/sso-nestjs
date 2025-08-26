@@ -2,8 +2,10 @@ import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { ConfigModule, ConfigService } from "@nestjs/config";
+import { HttpModule } from "@nestjs/axios";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
+import { NafathService } from "./services/nafath.service";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { LocalStrategy } from "./strategies/local.strategy";
 import { GoogleStrategy } from "./strategies/google.strategy";
@@ -17,6 +19,7 @@ import { CommonModule } from "../common/common.module";
 @Module({
   imports: [
     PassportModule.register({ defaultStrategy: "jwt" }),
+    HttpModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -34,6 +37,7 @@ import { CommonModule } from "../common/common.module";
   controllers: [AuthController],
   providers: [
     AuthService,
+    NafathService,
     LocalStrategy,
     JwtStrategy,
     GoogleStrategy,
@@ -42,6 +46,6 @@ import { CommonModule } from "../common/common.module";
     TwitterStrategy,
     MicrosoftStrategy,
   ],
-  exports: [AuthService, JwtModule],
+  exports: [AuthService, NafathService, JwtModule],
 })
 export class AuthModule {}

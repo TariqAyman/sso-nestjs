@@ -6,6 +6,7 @@ import {
   UseGuards,
   Request,
   Query,
+  Param,
   HttpStatus,
   ValidationPipe,
   BadRequestException,
@@ -282,5 +283,86 @@ export class AuthController {
   async microsoftCallback(@Request() req, @Res() res: Response): Promise<void> {
     const token = "generated-token"; // Generate actual token here
     res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+  }
+
+  // Nafath SSO Routes
+  @Post("nafath/initiate")
+  @ApiOperation({ summary: "Initiate Nafath authentication" })
+  @ApiResponse({
+    status: 200,
+    description: "Authentication initiated successfully",
+  })
+  @ApiResponse({ status: 400, description: "Bad request" })
+  async nafathInitiate(
+    @Body() body: { nationalId: string; channel?: "PUSH" | "QR" },
+    @Req() req
+  ): Promise<{
+    transactionId: string;
+    qrCode?: string;
+    expiresIn: number;
+    message: string;
+  }> {
+    return this.authService.initiateNafathAuth(body.nationalId, body.channel);
+  }
+
+  @Get("nafath/status/:transactionId")
+  @ApiOperation({ summary: "Check Nafath transaction status" })
+  @ApiResponse({ status: 200, description: "Status retrieved successfully" })
+  async nafathStatus(@Param("transactionId") transactionId: string): Promise<{
+    status: string;
+    profile?: any;
+  }> {
+    return this.authService.checkNafathStatus(transactionId);
+  }
+
+  @Post("nafath/callback")
+  @ApiOperation({ summary: "Nafath authentication callback" })
+  @ApiResponse({ status: 200, description: "Callback processed successfully" })
+  async nafathCallback(
+    @Body() payload: any,
+    @Request() req,
+    @Res() res: Response
+  ): Promise<void> {
+    try {
+      const signature = req.headers["x-nafath-signature"] as string;
+      const result = await this.authService.handleNafathCallback(
+        payload,
+        signature,
+        req.ip,
+        req.get("User-Agent")
+      );
+
+      // Redirect to frontend with token
+      res.redirect(
+        `${process.env.FRONTEND_URL}/auth/callback?token=${result.accessToken}&provider=nafath`
+      );
+    } catch (error) {
+      res.redirect(
+        `${process.env.FRONTEND_URL}/auth/error?message=${encodeURIComponent(error.message)}`
+      );
+    }
+  }
+
+  @Post("nafath/verify")
+  @ApiOperation({
+    summary: "Verify Nafath transaction and complete authentication",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Authentication completed successfully",
+  })
+  @ApiResponse({ status: 401, description: "Authentication failed" })
+  async nafathVerify(
+    @Body() body: { transactionId: string },
+    @Req() req
+  ): Promise<AuthResponse> {
+    const ipAddress = req.ip || req.connection.remoteAddress || "";
+    const userAgent = req.get("User-Agent") || "";
+
+    return this.authService.verifyNafathTransaction(
+      body.transactionId,
+      ipAddress,
+      userAgent
+    );
   }
 }
