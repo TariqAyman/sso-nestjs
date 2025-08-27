@@ -1,0 +1,98 @@
+// =========================================================================
+// PERMISSIONS & ROLES SCHEMA
+// =========================================================================
+// Role-based access control system with application-scoped permissions
+// Supports direct model assignments and role-permission inheritance
+// =========================================================================
+
+// Application-specific permissions
+model Permission {
+    id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+    ssoApplicationId BigInt    @map("sso_application_id") @db.UnsignedBigInt
+    name             String    @db.VarChar(255)
+    guardName        String?   @map("guard_name") @db.VarChar(255)
+    frontend         Boolean   @default(false)
+    createdAt        DateTime? @map("created_at")
+    updatedAt        DateTime? @map("updated_at")
+
+    // Relations
+    ssoApplication      SsoApplication       @relation(fields: [ssoApplicationId], references: [id], onDelete: Cascade, map: "permissions_sso_application_id_foreign")
+    modelHasPermissions ModelHasPermission[]
+    roleHasPermissions  RoleHasPermission[]
+
+    @@unique([name, ssoApplicationId], map: "permissions_name_sso_application_id_unique")
+    @@index([ssoApplicationId], map: "permissions_sso_application_id_foreign")
+    @@map("permissions")
+}
+
+// Application-specific roles
+model Role {
+    id               BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+    name             String    @db.VarChar(255)
+    guardName        String?   @map("guard_name") @db.VarChar(255)
+    ssoApplicationId BigInt    @map("sso_application_id") @db.UnsignedBigInt
+    frontend         Boolean   @default(false)
+    createdAt        DateTime? @map("created_at")
+    updatedAt        DateTime? @map("updated_at")
+
+    // Relations
+    ssoApplication     SsoApplication      @relation(fields: [ssoApplicationId], references: [id], onDelete: Cascade, map: "roles_sso_application_id_foreign")
+    modelHasRoles      ModelHasRole[]
+    roleHasPermissions RoleHasPermission[]
+
+    @@unique([name, ssoApplicationId], map: "roles_name_sso_application_id_unique")
+    @@index([ssoApplicationId], map: "roles_sso_application_id_foreign")
+    @@map("roles")
+}
+
+// Direct model permissions assignment
+model ModelHasPermission {
+    permissionId     BigInt @map("permission_id") @db.UnsignedBigInt
+    ssoApplicationId BigInt @map("sso_application_id") @db.UnsignedBigInt
+    modelType        String @map("model_type") @db.VarChar(255)
+    modelId          BigInt @map("model_id") @db.UnsignedBigInt
+
+    // Relations
+    permission     Permission     @relation(fields: [permissionId], references: [id], onDelete: Cascade, map: "model_has_permissions_permission_id_foreign")
+    ssoApplication SsoApplication @relation(fields: [ssoApplicationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_mhp_app")
+    organization   Organization   @relation(fields: [ssoApplicationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_mhp_org")
+
+    @@id([permissionId, modelId, modelType, ssoApplicationId])
+    @@index([modelId, modelType], map: "model_has_permissions_model_id_model_type_index")
+    @@index([ssoApplicationId], map: "fk_mhp_app")
+    @@index([modelId, modelType], map: "model_has_permissions_model_id_model_type_idx")
+    @@map("model_has_permissions")
+}
+
+// Direct model roles assignment
+model ModelHasRole {
+    roleId           BigInt @map("role_id") @db.UnsignedBigInt
+    ssoApplicationId BigInt @map("sso_application_id") @db.UnsignedBigInt
+    modelType        String @map("model_type") @db.VarChar(255)
+    modelId          BigInt @map("model_id") @db.UnsignedBigInt
+
+    // Relations
+    role           Role           @relation(fields: [roleId], references: [id], onDelete: Cascade, map: "model_has_roles_role_id_foreign")
+    ssoApplication SsoApplication @relation(fields: [ssoApplicationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_mhr_app")
+    organization   Organization   @relation(fields: [ssoApplicationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_mhr_org")
+
+    @@id([roleId, modelId, modelType, ssoApplicationId])
+    @@index([modelId, modelType], map: "model_has_roles_model_id_model_type_index")
+    @@index([ssoApplicationId], map: "fk_mhr_app")
+    @@index([modelId, modelType], map: "model_has_roles_model_id_model_type_idx")
+    @@map("model_has_roles")
+}
+
+// Role permissions assignment
+model RoleHasPermission {
+    permissionId BigInt @map("permission_id") @db.UnsignedBigInt
+    roleId       BigInt @map("role_id") @db.UnsignedBigInt
+
+    // Relations
+    permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade, map: "role_has_permissions_permission_id_foreign")
+    role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade, map: "role_has_permissions_role_id_foreign")
+
+    @@id([permissionId, roleId])
+    @@index([roleId], map: "role_has_permissions_role_id_foreign")
+    @@map("role_has_permissions")
+}

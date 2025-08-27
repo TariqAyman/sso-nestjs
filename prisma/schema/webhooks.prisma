@@ -1,0 +1,39 @@
+// =========================================================================
+// WEBHOOK & LOGGING SCHEMA
+// =========================================================================
+// Webhook delivery tracking and retry management system
+// Supports event logging, status tracking, and automatic retry logic
+// =========================================================================
+
+// Webhook delivery logging and retry management
+model WebhookLog {
+    id               Int       @id @default(autoincrement())
+    ssoApplicationId BigInt    @map("sso_application_id") @db.UnsignedBigInt
+    eventId          String    @map("event_id") @db.VarChar(100)
+    eventKey         String    @map("event_key") @db.VarChar(100)
+    eventType        String?   @map("event_type") @db.VarChar(100)
+    eventName        String?   @map("event_name") @db.VarChar(100)
+    eventOwner       String?   @map("event_owner") @db.VarChar(64)
+    eventData        String?   @map("event_data") @db.Text
+    payload          String    @db.Text
+    response         String?   @db.Text
+    status           String    @db.VarChar(50)
+    httpStatusCode   Int?      @map("http_status_code")
+    endpoint         String?   @db.Text
+    httpStatus       Int?      @map("http_status")
+    httpResponse     String?   @map("http_response") @db.Text
+    attempt          Int       @default(1)
+    errorMessage     String?   @map("error_message") @db.Text
+    deliveredAt      DateTime? @map("delivered_at") @db.DateTime(3)
+    nextRetryAt      DateTime? @map("next_retry_at") @db.DateTime(3)
+    createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+    // Relations
+    ssoApplication SsoApplication @relation(fields: [ssoApplicationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "webhook_logs_sso_application_id_fkey")
+
+    @@index([ssoApplicationId], map: "webhook_logs_sso_application_id_fkey")
+    @@index([eventKey, eventOwner], map: "index_log_webhooks")
+    @@index([ssoApplicationId, createdAt], map: "webhook_logs_app_created_idx")
+    @@index([status], map: "webhook_logs_status_idx")
+    @@map("webhook_logs")
+}

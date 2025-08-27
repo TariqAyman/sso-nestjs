@@ -1,0 +1,39 @@
+// =========================================================================
+// NAVIGATION & MENU SYSTEM SCHEMA
+// =========================================================================
+// Hierarchical menu system with role-based access control
+// Supports dynamic navigation, permissions, and UI configuration
+// =========================================================================
+
+// Navigation menu items with hierarchical structure
+model Menu {
+    id          String     @id @db.VarChar(191)
+    name        String?    @db.VarChar(100)
+    title       String     @db.VarChar(255)
+    url         String     @db.VarChar(500)
+    icon        String?    @db.VarChar(100)
+    position    Int        @default(0)
+    parentId    String?    @map("parent_id") @db.VarChar(191)
+    status      MenuStatus @default(active)
+    target      String     @default("_self") @db.VarChar(20)
+    cssClass    String?    @map("css_class") @db.VarChar(100)
+    role        String?    @db.VarChar(100)
+    permissions String?    @db.Text
+    group       String?    @db.VarChar(100)
+    createdAt   DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+    updatedAt   DateTime   @updatedAt @map("updated_at") @db.DateTime(3)
+
+    // Self-referential relation for hierarchical menus
+    parent   Menu?  @relation("MenuHierarchy", fields: [parentId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "menus_parent_id_fkey")
+    children Menu[] @relation("MenuHierarchy")
+
+    @@index([parentId], map: "menus_parent_id_fkey")
+    @@map("menus")
+}
+
+// Menu status enumeration
+enum MenuStatus {
+    active
+    hidden
+    disabled
+}

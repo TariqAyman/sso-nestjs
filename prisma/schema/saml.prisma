@@ -1,0 +1,31 @@
+// =========================================================================
+// SAML & ENTERPRISE SSO SCHEMA
+// =========================================================================
+// SAML 2.0 identity provider integration and enterprise SSO
+// Handles SAML tenants, metadata, and federation configurations
+// =========================================================================
+
+// SAML 2.0 tenant configuration for enterprise SSO
+model Saml2Tenant {
+    id            Int       @id @default(autoincrement()) @db.UnsignedInt
+    applicationId BigInt    @map("application_id") @db.UnsignedBigInt
+    uuid          String    @unique @db.Char(36)
+    key           String?   @db.VarChar(255)
+    idpEntityId   String    @map("idp_entity_id") @db.VarChar(255)
+    idpLoginUrl   String    @map("idp_login_url") @db.VarChar(255)
+    idpLogoutUrl  String    @map("idp_logout_url") @db.VarChar(255)
+    idpX509Cert   String    @map("idp_x509_cert") @db.Text
+    metadata      Json
+    createdAt     DateTime? @map("created_at")
+    updatedAt     DateTime? @map("updated_at")
+    deletedAt     DateTime? @map("deleted_at")
+    relayStateUrl String?   @map("relay_state_url") @db.VarChar(255)
+    nameIdFormat  String    @default("persistent") @map("name_id_format") @db.VarChar(255)
+
+    // Relations
+    ssoApplication SsoApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_saml_tenant_app")
+
+    @@unique([uuid], map: "saml2_tenants_uuid_unique")
+    @@index([applicationId], map: "fk_saml_tenant_app")
+    @@map("saml2_tenants")
+}

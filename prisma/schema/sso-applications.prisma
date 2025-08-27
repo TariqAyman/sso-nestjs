@@ -1,0 +1,50 @@
+// =========================================================================
+// SSO APPLICATION MANAGEMENT SCHEMA
+// =========================================================================
+// SSO application configuration, OAuth settings, and webhook management
+// Handles application registration, authentication flows, and integrations
+// =========================================================================
+
+model SsoApplication {
+    id                         BigInt               @id @default(autoincrement()) @db.UnsignedBigInt
+    organizationId             BigInt               @map("organization_id") @db.UnsignedBigInt
+    applicationName            String               @map("application_name") @db.VarChar(255)
+    applicationUrl             String               @map("application_url") @db.VarChar(500)
+    clientId                   String               @unique @map("client_id") @db.VarChar(255)
+    clientSecret               String               @map("client_secret") @db.VarChar(255)
+    redirectUri                String               @map("redirect_uri") @db.VarChar(500)
+    scope                      String?              @db.Text
+    status                     SsoApplicationStatus @default(active)
+    allowedOrigins             String?              @map("allowed_origins") @db.Text
+    tokenExpirationTime        Int                  @default(3600) @map("token_expiration_time")
+    refreshTokenEnabled        Boolean              @default(true) @map("refresh_token_enabled")
+    refreshTokenExpirationTime Int                  @default(3600) @map("refresh_token_expiration_time")
+    description                String?              @db.Text
+    logoUrl                    String?              @map("logo_url") @db.VarChar(500)
+    modeStrict                 Int?                 @default(0) @map("mode_strict")
+    whitelist                  String?              @db.Text
+    callbackUrl                String?              @map("callback_url") @db.Text
+    webhookUrl                 String?              @map("webhook_url") @db.VarChar(500)
+    webhookSecret              String?              @map("webhook_secret") @db.VarChar(255)
+    createdAt                  DateTime             @default(now()) @map("created_at") @db.DateTime(3)
+    updatedAt                  DateTime             @default(now()) @updatedAt @map("updated_at") @db.DateTime(3)
+
+    // Relations
+    organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_apps_org")
+    authorizationCodes  AuthorizationCode[]
+    refreshTokens       RefreshToken[]
+    permissions         Permission[]
+    roles               Role[]
+    modelHasPermissions ModelHasPermission[]
+    modelHasRoles       ModelHasRole[]
+    saml2Tenants        Saml2Tenant[]
+    webhookLogs         WebhookLog[]
+
+    @@unique([organizationId, applicationName], map: "apps_org_name_unique")
+    @@map("sso_applications")
+}
+
+enum SsoApplicationStatus {
+    active
+    disabled
+}

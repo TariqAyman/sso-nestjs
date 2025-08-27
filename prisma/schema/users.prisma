@@ -1,19 +1,21 @@
-// User Management Models
-// Contains User model and related authentication/profile models
-
 // =========================================================================
-// 1. USER MANAGEMENT MODELS
+// USER MANAGEMENT SCHEMA
 // =========================================================================
-// Main user model with Nafath SSO integration and complete profile management
-// Related models: UserActivation, ForgotPassword, LastLogin, PasswordResetToken
-// Documentation: prisma/schema/users.prisma
+// User model with complete authentication, profile management and security features
+// Includes multi-language support, two-factor authentication, and audit trails
+// =========================================================================
 
+// Main user model with comprehensive profile and security features
 model User {
     id                 BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-    identify           String?   @unique @db.VarChar(255) // national_id / iqama
-    name               String?   @db.VarChar(255)
-    nameAr             String?   @map("name_ar") @db.VarChar(255)
-    email              String?   @unique @db.VarChar(255)
+    organizationId     BigInt    @map("organization_id") @db.UnsignedBigInt
+    identify           String?   @map("identify") @db.VarChar(255)
+    username           String?   @db.VarChar(64)
+    fullName           Json?     @map("full_name")
+    firstName          Json?     @map("first_name")
+    lastName           Json?     @map("last_name")
+    avatar             String?   @db.VarChar(500)
+    email              String?   @db.VarChar(255)
     phone              String?   @db.VarChar(20)
     phoneCode          String?   @map("phone_code") @db.VarChar(5)
     identifyVerifiedAt DateTime? @map("identify_verified_at")
@@ -23,86 +25,58 @@ model User {
     role               Int       @default(0) @db.TinyInt
     type               Int       @default(0) @db.TinyInt
     passportImage      String?   @map("passport_image") @db.VarChar(255)
-    rememberToken      String?   @map("remember_token") @db.VarChar(100)
+    gravatar           String?   @db.Text
+    data               String?   @db.Text
+    hash               String?   @db.Text
+    method             String?   @db.VarChar(100)
+    service            String?   @db.VarChar(100)
+    status             Int?
     dateOfBirth        DateTime? @map("date_of_birth") @db.Date
     nationality        String?   @db.VarChar(255)
-    country            String?   @db.VarChar(255)
-    nationalityCode    Int?      @map("nationality_code")
-    oldId              Int?      @map("old_id")
-    createdAt          DateTime  @default(now()) @map("created_at")
-    updatedAt          DateTime  @updatedAt @map("updated_at")
+    country            String?   @db.Char(2)
+    nationalityCode    String?   @map("nationality_code") @db.Char(2)
+    twoFactorEnabled   Boolean?  @default(false) @map("two_factor_enabled")
+    twoFactorSecret    String?   @map("two_factor_secret") @db.VarChar(255)
+    email2fa           Int?      @default(0) @map("email_2fa")
+    email2faSecret     String?   @default("") @map("email_2fa_secret") @db.VarChar(32)
+    ga2fa              Int?      @default(0) @map("ga_2fa")
+    ga2faSecret        String?   @default("") @map("ga_2fa_secret") @db.VarChar(32)
+    rememberToken      String?   @map("remember_token") @db.VarChar(100)
+    timezone           String?   @db.VarChar(100)
+    language           String?   @default("en") @db.VarChar(10)
+    lastLoginAt        DateTime? @map("last_login_at") @db.DateTime(3)
+    lastLoginIp        String?   @map("last_login_ip") @db.VarChar(45)
+    loginAttempts      Int?      @default(0) @map("login_attempts")
+    lockedUntil        DateTime? @map("locked_until") @db.DateTime(3)
+    passwordChangedAt  DateTime? @map("password_changed_at") @db.DateTime(3)
+    idpData            Json?     @map("idp_data")
+    createdAt          DateTime? @map("created_at")
+    updatedAt          DateTime? @map("updated_at")
 
-    // Legacy fields for backward compatibility
-    fullName          String?   @map("full_name") @db.VarChar(255)
-    firstName         String?   @map("first_name") @db.VarChar(100)
-    lastName          String?   @map("last_name") @db.VarChar(100)
-    avatar            String?   @db.VarChar(500)
-    emailVerified     Boolean?  @default(false) @map("email_verified")
-    verified          Boolean?  @default(false)
-    verifiedAt        DateTime? @map("verified_at")
-    status            String?   @default("active") @db.VarChar(50)
-    twoFactorEnabled  Boolean?  @default(false) @map("two_factor_enabled")
-    twoFactorSecret   String?   @map("two_factor_secret") @db.VarChar(255)
-    profilePicture    String?   @map("profile_picture") @db.VarChar(500)
-    timezone          String?   @db.VarChar(100)
-    language          String?   @default("en") @db.VarChar(10)
-    lastLoginAt       DateTime? @map("last_login_at")
-    lastLoginIp       String?   @map("last_login_ip") @db.VarChar(45)
-    loginAttempts     Int?      @default(0) @map("login_attempts")
-    lockedUntil       DateTime? @map("locked_until")
-    passwordChangedAt DateTime? @map("password_changed_at")
+    // Generated columns for search optimization
+    fullNameEn String? @map("full_name_en") @db.VarChar(255)
+    fullNameAr String? @map("full_name_ar") @db.VarChar(255)
 
     // Relations
-    userActivations      UserActivation[]
-    forgotPasswords      ForgotPassword[]
-    lastLogins           LastLogin[]
-    ssoApplications      SsoApplication[]
-    oauthConnections     OauthConnection[]
-    authorizationCodes   AuthorizationCode[]
-    refreshTokens        RefreshToken[]
-    personalAccessTokens PersonalAccessToken[]
-    modelHasPermissions  ModelHasPermission[]
-    modelHasRoles        ModelHasRole[]
+    organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_users_org")
+    authorizationCodes  AuthorizationCode[]
+    refreshTokens       RefreshToken[]
+    lastLogins          LastLogin[]
+    oauthConnections    OauthConnection[]
+    passwordResetTokens PasswordResetToken[]
 
+    @@unique([organizationId, email], map: "users_org_email_unique")
+    @@unique([organizationId, username], map: "users_org_username_unique")
+    @@unique([organizationId, identify], map: "users_org_identify_unique")
+    @@index([organizationId], map: "users_org_idx")
+    @@index([lastLoginAt], map: "users_last_login_at_idx")
+    @@index([status], map: "users_status_idx")
+    @@index([fullNameEn], map: "users_full_name_en_idx")
+    @@index([fullNameAr], map: "users_full_name_ar_idx")
     @@map("users")
 }
 
-// User activation tokens for email/phone verification
-model UserActivation {
-    id        Int       @id @default(autoincrement())
-    userId    BigInt    @map("user_id") @db.UnsignedBigInt
-    token     String    @unique @db.VarChar(255)
-    type      String    @db.VarChar(50) // email, phone, etc.
-    expiresAt DateTime  @map("expires_at")
-    usedAt    DateTime? @map("used_at")
-    ipAddress String?   @map("ip_address") @db.VarChar(45)
-    userAgent String?   @map("user_agent") @db.Text
-    createdAt DateTime  @default(now()) @map("created_at")
-
-    // Relations
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@map("user_activations")
-}
-
-// Password reset functionality
-model ForgotPassword {
-    id        Int       @id @default(autoincrement())
-    userId    BigInt    @map("user_id") @db.UnsignedBigInt
-    token     String    @unique @db.VarChar(255)
-    expiresAt DateTime  @map("expires_at")
-    usedAt    DateTime? @map("used_at")
-    ipAddress String?   @map("ip_address") @db.VarChar(45)
-    userAgent String?   @map("user_agent") @db.Text
-    createdAt DateTime  @default(now()) @map("created_at")
-
-    // Relations
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-    @@map("forgot_passwords")
-}
-
-// User login history and security tracking
+// User login tracking and audit trail
 model LastLogin {
     id            Int      @id @default(autoincrement())
     userId        BigInt   @map("user_id") @db.UnsignedBigInt
@@ -112,22 +86,61 @@ model LastLogin {
     device        String?  @db.VarChar(255)
     browser       String?  @db.VarChar(255)
     os            String?  @db.VarChar(255)
+    attempt       Int      @default(1)
     successful    Boolean  @default(true)
     failureReason String?  @map("failure_reason") @db.VarChar(255)
-    loginAt       DateTime @default(now()) @map("login_at")
+    loginAt       DateTime @default(now()) @map("login_at") @db.DateTime(3)
 
     // Relations
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "last_logins_user_id_fkey")
 
+    @@index([userId], map: "last_logins_user_id_fkey")
+    @@index([userId, loginAt], map: "last_logins_user_time_idx")
     @@map("last_logins")
 }
 
-// Laravel-style password reset tokens
+// Password reset token management
 model PasswordResetToken {
-    email     String    @id @db.VarChar(255)
-    token     String    @db.VarChar(255)
-    createdAt DateTime  @default(now()) @map("created_at")
-    expiresAt DateTime? @map("expires_at")
+    userId    BigInt    @map("user_id") @db.UnsignedBigInt
+    email     String    @db.VarChar(255)
+    token     String    @unique @map("token") @db.VarChar(255)
+    usedAt    DateTime? @map("used_at") @db.DateTime(3)
+    ipAddress String?   @map("ip_address") @db.VarChar(45)
+    userAgent String?   @map("user_agent") @db.Text
+    expiredAt DateTime? @map("expired_at") @db.DateTime(3)
+    createdAt DateTime? @map("created_at")
 
+    // Relations
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_prt_user")
+
+    @@id([userId, token])
+    @@unique([token], map: "forgot_passwords_token_key")
+    @@index([email], map: "forgot_passwords_user_id_fkey")
+    @@index([usedAt], map: "password_reset_tokens_used_idx")
     @@map("password_reset_tokens")
+}
+
+// OAuth provider connections for social login
+model OauthConnection {
+    id             Int       @id @default(autoincrement())
+    userId         BigInt    @map("user_id") @db.UnsignedBigInt
+    provider       String    @db.VarChar(50)
+    providerId     String    @map("provider_id") @db.VarChar(255)
+    email          String?   @db.VarChar(255)
+    name           String?   @db.VarChar(255)
+    avatar         String?   @db.VarChar(500)
+    accessToken    String?   @map("access_token") @db.Text
+    refreshToken   String?   @map("refresh_token") @db.Text
+    tokenExpiresAt DateTime? @map("token_expires_at") @db.DateTime(3)
+    scope          String?   @db.Text
+    profileData    String?   @map("profile_data") @db.Text
+    connectedAt    DateTime  @default(now()) @map("connected_at") @db.DateTime(3)
+    lastUsedAt     DateTime? @map("last_used_at") @db.DateTime(3)
+
+    // Relations
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "oauth_connections_user_id_fkey")
+
+    @@unique([userId, provider], map: "oauth_connections_user_id_provider_key")
+    @@unique([provider, providerId], map: "oauth_provider_account_unique")
+    @@map("oauth_connections")
 }

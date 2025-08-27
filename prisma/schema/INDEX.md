@@ -1,52 +1,99 @@
 # Schema Module Index
 
-Quick reference guide to all schema modules in this directory.
+Quick reference guide to all schema modules in this directory based on the new SSO system structure.
 
 ## 📋 Module Overview
 
-| Module              | File                   | Models   | Purpose                            |
-| ------------------- | ---------------------- | -------- | ---------------------------------- |
-| **User Management** | `users.prisma`         | 5 models | Authentication, profiles, security |
-| **OAuth & SSO**     | `oauth.prisma`         | 4 models | External provider integration      |
-| **Permissions**     | `permissions.prisma`   | 5 models | Role-based access control          |
-| **Tokens**          | `tokens.prisma`        | 1 model  | API authentication                 |
-| **Microservices**   | `microservices.prisma` | 1 model  | Service architecture               |
-| **SAML**            | `saml.prisma`          | 1 model  | Enterprise SSO                     |
-| **Queue System**    | -                      | 3 models | Background processing              |
+| Module                    | File                      | Models   | Purpose                               |
+| ------------------------- | ------------------------- | -------- | ------------------------------------- |
+| **Organizations**         | `organizations.prisma`    | 1 model  | Multi-tenant organization management  |
+| **SSO Applications**      | `sso-applications.prisma` | 1 model  | OAuth client and SSO app registration |
+| **User Management**       | `users.prisma`            | 4 models | Authentication, profiles, security    |
+| **OAuth & Authorization** | `oauth.prisma`            | 3 models | OAuth 2.0 flow and token management   |
+| **Permissions & Roles**   | `permissions.prisma`      | 5 models | Role-based access control system      |
+| **SAML Enterprise**       | `saml.prisma`             | 1 model  | SAML 2.0 tenant configuration         |
+| **Navigation & Menus**    | `menus.prisma`            | 1 model  | System navigation management          |
+| **Queue & Jobs**          | `jobs.prisma`             | 2 models | Background job processing             |
+| **Webhooks & Logging**    | `webhooks.prisma`         | 1 model  | Event delivery and retry management   |
 
 ## 🔍 Quick Model Finder
 
-### Authentication & Users
+### Core System Architecture
 
-- `User` - Main user model with Nafath integration
-- `UserActivation` - Email/phone verification
-- `ForgotPassword` - Password reset tokens
-- `LastLogin` - Login history tracking
-- `PasswordResetToken` - Laravel-style resets
+- `Organization` - Multi-tenant organization management
+- `SsoApplication` - OAuth client registration and configuration
+- `User` - Main user model with comprehensive features
+- `LastLogin` - Login history and security tracking
+- `PasswordResetToken` - Password reset token management
+- `OauthConnection` - External OAuth provider connections
 
-### OAuth & External Auth
+### Authentication & Authorization
 
-- `SsoApplication` - OAuth client registration
-- `OauthConnection` - User-provider connections
-- `AuthorizationCode` - OAuth authorization flow
-- `RefreshToken` - Token renewal
+- `AuthorizationCode` - OAuth 2.0 authorization code flow
+- `RefreshToken` - OAuth refresh token management
+- `PersonalAccessToken` - API authentication tokens
 
 ### Security & Permissions
 
-- `Permission` - System permissions
-- `Role` - User roles
-- `ModelHasPermission` - Direct permissions
-- `ModelHasRole` - Direct roles
-- `RoleHasPermission` - Role permissions
+- `Permission` - Application-scoped permissions
+- `Role` - Application-scoped roles
+- `ModelHasPermission` - Direct model permission assignments
+- `ModelHasRole` - Direct model role assignments
+- `RoleHasPermission` - Role-permission relationships
 
-### API & Tokens
+### Enterprise Features
 
-- `PersonalAccessToken` - API authentication
+- `Saml2Tenant` - SAML 2.0 enterprise SSO configuration
+- `WebhookLog` - Event delivery tracking and retry management
 
-### Enterprise & Architecture
+### System Management
 
-- `MicroService` - Service registration
-- `SamlTenantSetting` - SAML configuration
+- `Menu` - Navigation menu hierarchy
+- `Job` - Background job queue
+- `FailedJob` - Failed job tracking
+
+## 🏗️ Database Schema Features
+
+### Multi-Tenant Architecture
+
+- Organization-scoped users and applications
+- Shared user applications support
+- Isolated permission and role systems per application
+
+### Comprehensive User Management
+
+- JSON-based multi-language name support
+- Multiple verification levels (email, phone, identity)
+- Advanced security features (2FA, account locking)
+- Login history and audit trails
+
+### OAuth 2.0 Compliance
+
+- Full authorization code flow support
+- Refresh token management
+- Scope-based authorization
+- Token expiration and revocation
+
+### Enterprise-Ready Features
+
+- SAML 2.0 SSO integration
+- Webhook delivery with retry logic
+- Background job processing
+- Comprehensive audit logging
+
+### Performance Optimizations
+
+- Strategic database indexes
+- Generated columns for search
+- Efficient foreign key relationships
+- Optimized query patterns
+
+## 📚 Usage Guidelines
+
+1. **Schema Organization**: Each schema file contains logically related models
+2. **Relationships**: Cross-references between schema files are handled through the main schema
+3. **Migrations**: Use Prisma migrations to apply schema changes
+4. **Documentation**: Each schema file includes detailed comments and purpose descriptions
 
 ### Background Processing
 
