@@ -100,7 +100,7 @@
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts",
-    "schema": "./prisma/models"
+    "schema": "./prisma/schema"
   },
   "jest": {
     "moduleFileExtensions": [

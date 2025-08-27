@@ -42,15 +42,26 @@ export class PrismaService
     }
 
     return this.$transaction([
+      // Clean in order of dependencies (child tables first)
       this.webhookLog.deleteMany(),
+      this.failedJob.deleteMany(),
+      this.job.deleteMany(),
+      this.roleHasPermission.deleteMany(),
+      this.modelHasRole.deleteMany(),
+      this.modelHasPermission.deleteMany(),
+      this.role.deleteMany(),
+      this.permission.deleteMany(),
+      this.personalAccessToken.deleteMany(),
+      this.refreshToken.deleteMany(),
+      this.authorizationCode.deleteMany(),
       this.oauthConnection.deleteMany(),
+      this.passwordResetToken.deleteMany(),
       this.lastLogin.deleteMany(),
-      this.forgotPassword.deleteMany(),
-      this.userActivation.deleteMany(),
-      this.ssoApplication.deleteMany(),
-      this.faq.deleteMany(),
+      this.saml2Tenant.deleteMany(),
       this.menu.deleteMany(),
       this.user.deleteMany(),
+      this.ssoApplication.deleteMany(),
+      this.organization.deleteMany(),
     ]);
   }
 }

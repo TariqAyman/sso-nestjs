@@ -8,7 +8,7 @@
 // OAuth authorization codes for the authorization code flow
 model AuthorizationCode {
     id               String    @id @db.VarChar(191)
-    code             String    @unique @db.VarChar(255)
+    code             String    @unique(map: "authorization_codes_code_key") @db.VarChar(255)
     userId           BigInt    @map("user_id") @db.UnsignedBigInt
     ssoApplicationId BigInt    @map("sso_application_id") @db.UnsignedBigInt
     redirectUri      String    @map("redirect_uri") @db.VarChar(500)
@@ -21,7 +21,6 @@ model AuthorizationCode {
     user           User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "authorization_codes_user_id_fkey")
     ssoApplication SsoApplication @relation(fields: [ssoApplicationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "authorization_codes_sso_application_id_fkey")
 
-    @@unique([code], map: "authorization_codes_code_key")
     @@index([userId], map: "authorization_codes_user_id_fkey")
     @@index([ssoApplicationId], map: "authorization_codes_sso_application_id_fkey")
     @@index([userId, ssoApplicationId, expiresAt], map: "authorization_codes_user_app_exp_idx")
@@ -31,7 +30,7 @@ model AuthorizationCode {
 // OAuth refresh tokens for extended session management
 model RefreshToken {
     id               String   @id @db.VarChar(191)
-    token            String   @unique @db.VarChar(255)
+    token            String   @unique(map: "refresh_tokens_token_key") @db.VarChar(255)
     userId           BigInt   @map("user_id") @db.UnsignedBigInt
     ssoApplicationId BigInt   @map("sso_application_id") @db.UnsignedBigInt
     scope            String   @db.VarChar(255)
@@ -43,7 +42,6 @@ model RefreshToken {
     user           User           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "refresh_tokens_user_id_fkey")
     ssoApplication SsoApplication @relation(fields: [ssoApplicationId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "refresh_tokens_sso_application_id_fkey")
 
-    @@unique([token], map: "refresh_tokens_token_key")
     @@index([userId], map: "refresh_tokens_user_id_fkey")
     @@index([ssoApplicationId], map: "refresh_tokens_sso_application_id_fkey")
     @@index([expiresAt], map: "refresh_tokens_expires_idx")
@@ -56,14 +54,13 @@ model PersonalAccessToken {
     tokenableType String    @map("tokenable_type") @db.VarChar(255)
     tokenableId   BigInt    @map("tokenable_id") @db.UnsignedBigInt
     name          String    @db.VarChar(255)
-    token         String    @unique @db.VarChar(64)
+    token         String    @unique(map: "personal_access_tokens_token_unique") @db.VarChar(64)
     abilities     String?   @db.Text
     lastUsedAt    DateTime? @map("last_used_at")
     expiresAt     DateTime? @map("expires_at")
     createdAt     DateTime? @map("created_at")
     updatedAt     DateTime? @map("updated_at")
 
-    @@unique([token], map: "personal_access_tokens_token_unique")
     @@index([tokenableType, tokenableId], map: "personal_access_tokens_tokenable_type_tokenable_id_index")
     @@index([expiresAt], map: "personal_tokens_expires_idx")
     @@map("personal_access_tokens")
