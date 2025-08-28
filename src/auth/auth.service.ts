@@ -23,14 +23,14 @@ export interface RegisterDto {
   email: string;
   password: string;
   fullName: string;
-  organizationId: bigint;
+  organizationId: string;
   timezone?: string;
   language?: string;
 }
 
 export interface AuthResponse {
   user: {
-    id: bigint;
+    id: string;
     email: string;
     fullName: string | null;
     emailVerified: boolean;
@@ -57,11 +57,9 @@ function jsonValueToString(value: any): string | null {
 }
 
 export interface JwtPayload {
-  sub: string; // Convert bigint to string for JWT
+  sub: string; // UUID string
   email: string;
   role: number;
-  iat?: number;
-  exp?: number;
 }
 
 @Injectable()
@@ -133,7 +131,7 @@ export class AuthService {
 
     // Generate tokens
     const payload: JwtPayload = {
-      sub: user.id.toString(), // Convert bigint to string for JWT
+      sub: user.id, // Already a string UUID
       email: user.email,
       role: user.role,
     };
@@ -167,7 +165,7 @@ export class AuthService {
 
   async register(
     registerDto: RegisterDto
-  ): Promise<{ message: string; userId: bigint }> {
+  ): Promise<{ message: string; userId: string }> {
     const user = await this.usersService.create(registerDto);
 
     // Generate activation token
@@ -319,7 +317,7 @@ export class AuthService {
   ): Promise<{ accessToken: string; expiresIn: number }> {
     try {
       const payload = this.jwtService.verify(refreshToken);
-      const user = await this.usersService.findById(BigInt(payload.sub));
+      const user = await this.usersService.findById(payload.sub);
 
       if (!user || user.status !== 1) {
         // 1 = active status
@@ -327,7 +325,7 @@ export class AuthService {
       }
 
       const newPayload: JwtPayload = {
-        sub: user.id.toString(),
+        sub: user.id, // Already a string UUID
         email: user.email,
         role: user.role,
       };
@@ -341,7 +339,7 @@ export class AuthService {
     }
   }
 
-  async logout(userId: bigint): Promise<{ message: string }> {
+  async logout(userId: string): Promise<{ message: string }> {
     // In a more complex setup, you might want to blacklist the token
     // For now, we'll just log the logout event
     this.logger.log(`User ${userId} logged out`);
@@ -349,7 +347,7 @@ export class AuthService {
   }
 
   async validateJwtPayload(payload: JwtPayload): Promise<any | null> {
-    const user = await this.usersService.findById(BigInt(payload.sub));
+    const user = await this.usersService.findById(payload.sub);
 
     if (!user || user.status !== 1) {
       // 1 = active status
@@ -597,7 +595,7 @@ export class AuthService {
 
       user = await this.prisma.user.create({
         data: {
-          organizationId: BigInt(1), // Default organization
+          organizationId: "00000000-0000-0000-0000-000000000001", // Default organization UUID
           email,
           password: "", // Nafath users don't need passwords
           fullName,
@@ -641,7 +639,7 @@ export class AuthService {
     refreshToken: string;
   }> {
     const payload: JwtPayload = {
-      sub: user.id.toString(),
+      sub: user.id, // Already a string UUID
       email: user.email,
       role: user.role,
     };

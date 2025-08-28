@@ -11,7 +11,6 @@ import {
   Request,
   HttpCode,
   HttpStatus,
-  ParseIntPipe,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -88,10 +87,7 @@ export class SsoController {
     description: "Application retrieved successfully",
   })
   @ApiResponse({ status: 404, description: "Application not found" })
-  async getApplicationById(
-    @Request() req,
-    @Param("id", ParseIntPipe) id: number
-  ) {
+  async getApplicationById(@Request() req, @Param("id") id: string) {
     return this.ssoService.findById(id, req.user.id);
   }
 
@@ -102,7 +98,7 @@ export class SsoController {
   @ApiResponse({ status: 400, description: "Invalid input data" })
   async updateApplication(
     @Request() req,
-    @Param("id", ParseIntPipe) id: number,
+    @Param("id") id: string,
     @Body() updateSsoApplicationDto: UpdateSsoApplicationDto
   ) {
     return this.ssoService.updateApplication(
@@ -117,10 +113,7 @@ export class SsoController {
   @ApiOperation({ summary: "Delete SSO application" })
   @ApiResponse({ status: 204, description: "Application deleted successfully" })
   @ApiResponse({ status: 404, description: "Application not found" })
-  async deleteApplication(
-    @Request() req,
-    @Param("id", ParseIntPipe) id: number
-  ) {
+  async deleteApplication(@Request() req, @Param("id") id: string) {
     return this.ssoService.deleteApplication(id, req.user.id);
   }
 
@@ -131,10 +124,7 @@ export class SsoController {
     description: "Client secret regenerated successfully",
   })
   @ApiResponse({ status: 404, description: "Application not found" })
-  async regenerateClientSecret(
-    @Request() req,
-    @Param("id", ParseIntPipe) id: number
-  ) {
+  async regenerateClientSecret(@Request() req, @Param("id") id: string) {
     return this.ssoService.regenerateClientSecret(id, req.user.id);
   }
 }

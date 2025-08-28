@@ -38,7 +38,7 @@ export interface UpdateSsoApplicationDto {
 }
 
 export interface SsoApplicationResponse {
-  id: number;
+  id: string;
   applicationName: string;
   applicationUrl: string;
   clientId: string;
@@ -66,7 +66,7 @@ export class SsoService {
   ) {}
 
   async createApplication(
-    userId: number,
+    userId: string,
     createDto: CreateSsoApplicationDto
   ): Promise<SsoApplicationResponse> {
     // Validate input
@@ -144,7 +144,7 @@ export class SsoService {
   }
 
   async findUserApplications(
-    userId: number,
+    userId: string,
     params: {
       skip?: number;
       take?: number;
@@ -181,7 +181,7 @@ export class SsoService {
     };
   }
 
-  async findById(id: number, userId?: number): Promise<SsoApplicationResponse> {
+  async findById(id: string, userId?: string): Promise<SsoApplicationResponse> {
     const where: Prisma.SsoApplicationWhereInput = { id };
     if (userId) {
       where.organizationId = userId; // Changed from userId to organizationId
@@ -209,8 +209,8 @@ export class SsoService {
   }
 
   async updateApplication(
-    id: number,
-    userId: number,
+    id: string,
+    userId: string,
     updateDto: UpdateSsoApplicationDto
   ): Promise<SsoApplicationResponse> {
     const application = await this.prisma.ssoApplication.findFirst({
@@ -303,7 +303,7 @@ export class SsoService {
     return this.toApplicationResponse(updatedApplication);
   }
 
-  async deleteApplication(id: number, userId: number): Promise<void> {
+  async deleteApplication(id: string, userId: string): Promise<void> {
     const application = await this.prisma.ssoApplication.findFirst({
       where: { id, organizationId: userId }, // Changed from userId to organizationId
     });
@@ -322,8 +322,8 @@ export class SsoService {
   }
 
   async regenerateClientSecret(
-    id: number,
-    userId: number
+    id: string,
+    userId: string
   ): Promise<{ clientSecret: string }> {
     const application = await this.prisma.ssoApplication.findFirst({
       where: { id, organizationId: userId }, // Changed from userId to organizationId
@@ -353,7 +353,7 @@ export class SsoService {
     const { clientSecret, webhookSecret, ...response } = application;
     return {
       ...response,
-      id: Number(response.id), // Convert BigInt to number
+      id: response.id, // Already a string UUID
     };
   }
 }

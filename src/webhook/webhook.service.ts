@@ -9,7 +9,7 @@ import { AxiosResponse } from "axios";
 
 export interface WebhookEvent {
   event: string;
-  userId: bigint;
+  userId: string;
   scope?: string;
   timestamp: string;
   [key: string]: any;
@@ -120,7 +120,7 @@ export class WebhookService {
   }
 
   private async logWebhook(
-    applicationId: bigint, // Changed from number to bigint
+    applicationId: string, // UUID string
     event: string,
     payload: any,
     options: {

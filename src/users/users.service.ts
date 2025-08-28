@@ -13,7 +13,7 @@ export interface CreateUserDto {
   email: string;
   password: string;
   fullName: string;
-  organizationId: bigint;
+  organizationId: string;
   role?: number;
   timezone?: string;
   language?: string;
@@ -28,7 +28,7 @@ export interface UpdateUserDto {
 }
 
 export interface UserResponse {
-  id: bigint;
+  id: string;
   email: string;
   fullName: string | null;
   emailVerified: boolean;
@@ -113,7 +113,7 @@ export class UsersService {
     return this.toUserResponse(user);
   }
 
-  async findById(id: bigint): Promise<UserResponse | null> {
+  async findById(id: string): Promise<UserResponse | null> {
     const user = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -123,7 +123,7 @@ export class UsersService {
 
   async findByEmail(
     email: string,
-    organizationId?: bigint
+    organizationId?: string
   ): Promise<User | null> {
     if (organizationId) {
       return this.prisma.user.findFirst({
@@ -141,7 +141,7 @@ export class UsersService {
 
   async findByEmailWithPassword(
     email: string,
-    organizationId?: bigint
+    organizationId?: string
   ): Promise<User | null> {
     if (organizationId) {
       return this.prisma.user.findFirst({
@@ -158,7 +158,7 @@ export class UsersService {
   }
 
   async update(
-    id: number,
+    id: string,
     updateUserDto: UpdateUserDto
   ): Promise<UserResponse> {
     const user = await this.prisma.user.findUnique({
@@ -216,7 +216,7 @@ export class UsersService {
     return this.toUserResponse(updatedUser);
   }
 
-  async updatePassword(id: bigint, newPassword: string): Promise<void> {
+  async updatePassword(id: string, newPassword: string): Promise<void> {
     const passwordValidation =
       this.validatorService.isValidPassword(newPassword);
     if (!passwordValidation.isValid) {
@@ -236,7 +236,7 @@ export class UsersService {
     });
   }
 
-  async verifyUser(id: bigint): Promise<UserResponse> {
+  async verifyUser(id: string): Promise<UserResponse> {
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data: {
@@ -247,7 +247,7 @@ export class UsersService {
     return this.toUserResponse(updatedUser);
   }
 
-  async updateLoginAttempts(id: bigint, attempts: number): Promise<void> {
+  async updateLoginAttempts(id: string, attempts: number): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: {
@@ -259,7 +259,7 @@ export class UsersService {
   }
 
   async recordLogin(
-    id: bigint,
+    id: string,
     ipAddress: string,
     userAgent?: string
   ): Promise<void> {
@@ -287,7 +287,7 @@ export class UsersService {
   }
 
   async recordFailedLogin(
-    id: bigint,
+    id: string,
     ipAddress: string,
     userAgent?: string,
     reason?: string
@@ -312,7 +312,7 @@ export class UsersService {
     });
   }
 
-  async isAccountLocked(id: bigint): Promise<boolean> {
+  async isAccountLocked(id: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: { lockedUntil: true },
@@ -343,7 +343,7 @@ export class UsersService {
     return this.prisma.user.count({ where });
   }
 
-  async delete(id: bigint): Promise<void> {
+  async delete(id: string): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -357,7 +357,7 @@ export class UsersService {
     });
   }
 
-  async updateStatus(id: bigint, status: number): Promise<UserResponse> {
+  async updateStatus(id: string, status: number): Promise<UserResponse> {
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data: { status },
@@ -366,7 +366,7 @@ export class UsersService {
     return this.toUserResponse(updatedUser);
   }
 
-  async getTwoFactorSecret(id: bigint): Promise<string | null> {
+  async getTwoFactorSecret(id: string): Promise<string | null> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: { twoFactorSecret: true },
@@ -375,21 +375,21 @@ export class UsersService {
     return user?.twoFactorSecret || null;
   }
 
-  async setTwoFactorSecret(id: bigint, secret: string): Promise<void> {
+  async setTwoFactorSecret(id: string, secret: string): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: { twoFactorSecret: secret },
     });
   }
 
-  async enableTwoFactor(id: bigint): Promise<void> {
+  async enableTwoFactor(id: string): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: { twoFactorEnabled: true },
     });
   }
 
-  async disableTwoFactor(id: bigint): Promise<void> {
+  async disableTwoFactor(id: string): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: {

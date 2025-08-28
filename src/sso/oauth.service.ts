@@ -74,7 +74,7 @@ export class OAuthService {
 
   async authorize(
     request: AuthorizeRequest,
-    userId: bigint
+    userId: string
   ): Promise<{ code: string; state?: string }> {
     // Validate OAuth 2.0 authorization request
     if (request.response_type !== "code") {
@@ -187,7 +187,7 @@ export class OAuthService {
 
     // Generate access token
     const payload = {
-      sub: authCode.userId.toString(),
+      sub: authCode.userId, // Already a string UUID
       client_id: application.clientId,
       scope: authCode.scope,
       iat: Math.floor(Date.now() / 1000),
@@ -292,7 +292,7 @@ export class OAuthService {
 
     // Generate new access token
     const payload = {
-      sub: refreshToken.userId.toString(),
+      sub: refreshToken.userId, // Already a string UUID
       client_id: application.clientId,
       scope: refreshToken.scope,
       iat: Math.floor(Date.now() / 1000),
@@ -330,7 +330,7 @@ export class OAuthService {
   async getUserInfo(accessToken: string): Promise<UserInfoResponse> {
     try {
       const decoded = this.jwtService.verify(accessToken);
-      const userId = BigInt(decoded.sub);
+      const userId = decoded.sub; // Already a string UUID
 
       const user = await this.userService.findById(userId);
 
@@ -343,7 +343,7 @@ export class OAuthService {
       const lastName = jsonValueToString(user.lastName);
 
       return {
-        sub: userId.toString(),
+        sub: userId, // Already a string UUID
         email: user.email,
         name:
           fullName ||

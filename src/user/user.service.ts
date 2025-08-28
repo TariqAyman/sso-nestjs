@@ -6,7 +6,7 @@ import { PrismaService } from "../common/prisma/prisma.service";
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async findById(id: bigint): Promise<User | null> {
+  async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { id },
     });
@@ -21,7 +21,7 @@ export class UserService {
   }
 
   async updateLastLogin(
-    id: bigint,
+    id: string,
     ipAddress: string,
     userAgent?: string
   ): Promise<void> {

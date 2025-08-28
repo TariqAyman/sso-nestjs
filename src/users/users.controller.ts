@@ -9,7 +9,6 @@ import {
   Query,
   UseGuards,
   Request,
-  ParseIntPipe,
   HttpStatus,
   ValidationPipe,
 } from "@nestjs/common";
@@ -117,7 +116,7 @@ export class UsersController {
     // Add default organizationId for user creation
     const createUserData: CreateUserDto = {
       ...createUserDto,
-      organizationId: BigInt(1), // Default organization
+      organizationId: "00000000-0000-0000-0000-000000000001", // Default organization UUID
       role: createUserDto.role ? parseInt(createUserDto.role) : undefined, // Convert string to number
     };
     return this.usersService.create(createUserData);
@@ -190,8 +189,8 @@ export class UsersController {
   @ApiOperation({ summary: "Get user by ID (Admin only)" })
   @ApiResponse({ status: 200, description: "User retrieved successfully" })
   @ApiResponse({ status: 404, description: "User not found" })
-  async findOne(@Param("id", ParseIntPipe) id: number): Promise<UserResponse> {
-    return this.usersService.findById(BigInt(id)); // Convert number to bigint
+  async findOne(@Param("id") id: string): Promise<UserResponse> {
+    return this.usersService.findById(id); // UUID string, no conversion needed
   }
 
   @Put("profile")
@@ -214,7 +213,7 @@ export class UsersController {
   @ApiResponse({ status: 200, description: "User updated successfully" })
   @ApiResponse({ status: 404, description: "User not found" })
   async update(
-    @Param("id", ParseIntPipe) id: number,
+    @Param("id") id: string,
     @Body(ValidationPipe) updateUserDto: UpdateUserRequestDto
   ): Promise<UserResponse> {
     return this.usersService.update(id, updateUserDto);
@@ -243,7 +242,7 @@ export class UsersController {
   @ApiOperation({ summary: "Update user status (Admin only)" })
   @ApiResponse({ status: 200, description: "User status updated successfully" })
   async updateStatus(
-    @Param("id", ParseIntPipe) id: number,
+    @Param("id") id: string,
     @Body(ValidationPipe) updateStatusDto: UpdateStatusDto
   ): Promise<UserResponse> {
     // Map string status to number
@@ -253,9 +252,9 @@ export class UsersController {
       suspended: 2,
     };
     return this.usersService.updateStatus(
-      BigInt(id),
+      id,
       statusMap[updateStatusDto.status]
-    ); // Convert number to bigint and map status
+    ); // Use UUID string directly
   }
 
   @Delete(":id")
@@ -265,10 +264,8 @@ export class UsersController {
   @ApiOperation({ summary: "Delete user (Admin only)" })
   @ApiResponse({ status: 200, description: "User deleted successfully" })
   @ApiResponse({ status: 404, description: "User not found" })
-  async remove(
-    @Param("id", ParseIntPipe) id: number
-  ): Promise<{ message: string }> {
-    await this.usersService.delete(BigInt(id)); // Convert number to bigint
+  async remove(@Param("id") id: string): Promise<{ message: string }> {
+    await this.usersService.delete(id); // Use UUID string directly
     return { message: "User deleted successfully" };
   }
 

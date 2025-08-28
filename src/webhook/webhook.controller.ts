@@ -6,7 +6,6 @@ import {
   Param,
   UseGuards,
   Request,
-  ParseIntPipe,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -106,7 +105,7 @@ export class WebhookController {
     description: "Webhook log retrieved successfully",
   })
   @ApiResponse({ status: 404, description: "Webhook log not found" })
-  async getWebhookLog(@Request() req, @Param("id", ParseIntPipe) id: number) {
+  async getWebhookLog(@Request() req, @Param("id") id: string) {
     const log = await this.prisma.webhookLog.findFirst({
       where: {
         id,
@@ -137,7 +136,7 @@ export class WebhookController {
   @ApiOperation({ summary: "Retry a failed webhook" })
   @ApiResponse({ status: 200, description: "Webhook retry initiated" })
   @ApiResponse({ status: 404, description: "Webhook log not found" })
-  async retryWebhook(@Request() req, @Param("id", ParseIntPipe) id: number) {
+  async retryWebhook(@Request() req, @Param("id") id: string) {
     const log = await this.prisma.webhookLog.findFirst({
       where: {
         id,
