@@ -8,7 +8,7 @@
 // SAML 2.0 tenant configuration for enterprise SSO
 model Saml2Tenant {
   id            Int       @id @default(autoincrement()) @db.UnsignedInt
-  applicationId BigInt    @map("application_id") @db.UnsignedBigInt
+  applicationId String    @map("application_id") @db.VarChar(36)
   uuid          String    @unique @db.Char(36)
   key           String?   @db.VarChar(255)
   idpEntityId   String    @map("idp_entity_id") @db.VarChar(255)

@@ -8,7 +8,7 @@
 // Webhook delivery logging and retry management
 model WebhookLog {
   id               Int       @id @default(autoincrement())
-  ssoApplicationId BigInt    @map("sso_application_id") @db.UnsignedBigInt
+  ssoApplicationId String    @map("sso_application_id") @db.VarChar(36)
   eventId          String    @map("event_id") @db.VarChar(100)
   eventKey         String    @map("event_key") @db.VarChar(100)
   eventType        String?   @map("event_type") @db.VarChar(100)

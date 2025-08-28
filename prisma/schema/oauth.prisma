@@ -9,8 +9,8 @@
 model AuthorizationCode {
   id               String    @id @db.VarChar(191)
   code             String    @unique(map: "authorization_codes_code_key") @db.VarChar(255)
-  userId           BigInt    @map("user_id") @db.UnsignedBigInt
-  ssoApplicationId BigInt    @map("sso_application_id") @db.UnsignedBigInt
+  userId           String    @map("user_id") @db.VarChar(36)
+  ssoApplicationId String    @map("sso_application_id") @db.VarChar(36)
   redirectUri      String    @map("redirect_uri") @db.VarChar(500)
   scope            String    @db.VarChar(255)
   expiresAt        DateTime  @map("expires_at") @db.DateTime(3)
@@ -31,8 +31,8 @@ model AuthorizationCode {
 model RefreshToken {
   id               String   @id @db.VarChar(191)
   token            String   @unique(map: "refresh_tokens_token_key") @db.VarChar(255)
-  userId           BigInt   @map("user_id") @db.UnsignedBigInt
-  ssoApplicationId BigInt   @map("sso_application_id") @db.UnsignedBigInt
+  userId           String   @map("user_id") @db.VarChar(36)
+  ssoApplicationId String   @map("sso_application_id") @db.VarChar(36)
   scope            String   @db.VarChar(255)
   expiresAt        DateTime @map("expires_at") @db.DateTime(3)
   revoked          Boolean  @default(false)
@@ -50,9 +50,9 @@ model RefreshToken {
 
 // Personal access tokens for API authentication
 model PersonalAccessToken {
-  id            BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  id            String    @id @default(uuid()) @db.VarChar(36)
   tokenableType String    @map("tokenable_type") @db.VarChar(255)
-  tokenableId   BigInt    @map("tokenable_id") @db.UnsignedBigInt
+  tokenableId   String    @map("tokenable_id") @db.VarChar(36)
   name          String    @db.VarChar(255)
   token         String    @unique(map: "personal_access_tokens_token_unique") @db.VarChar(64)
   abilities     String?   @db.Text

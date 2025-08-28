@@ -7,7 +7,7 @@
 
 // Background job queue
 model Job {
-  id          BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  id          String @id @default(uuid()) @db.VarChar(36)
   queue       String @db.VarChar(255)
   payload     String @db.LongText
   attempts    Int    @db.UnsignedTinyInt
@@ -22,7 +22,7 @@ model Job {
 
 // Failed job tracking
 model FailedJob {
-  id         BigInt   @id @default(autoincrement()) @db.UnsignedBigInt
+  id         String   @id @default(uuid()) @db.VarChar(36)
   uuid       String   @unique @db.VarChar(255)
   connection String   @db.Text
   queue      String   @db.Text

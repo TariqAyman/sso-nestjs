@@ -7,8 +7,8 @@
 
 // Main user model with comprehensive profile and security features
 model User {
-  id                 BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
-  organizationId     BigInt    @map("organization_id") @db.UnsignedBigInt
+  id                 String    @id @default(uuid()) @db.VarChar(36)
+  organizationId     String    @map("organization_id") @db.VarChar(36)
   identify           String?   @map("identify") @db.VarChar(255)
   username           String?   @db.VarChar(64)
   fullName           Json?     @map("full_name")
@@ -79,7 +79,7 @@ model User {
 // User login tracking and audit trail
 model LastLogin {
   id            Int      @id @default(autoincrement())
-  userId        BigInt   @map("user_id") @db.UnsignedBigInt
+  userId        String   @map("user_id") @db.VarChar(36)
   ipAddress     String   @map("ip_address") @db.VarChar(45)
   userAgent     String?  @map("user_agent") @db.Text
   location      String?  @db.VarChar(255)
@@ -101,7 +101,7 @@ model LastLogin {
 
 // Password reset token management
 model PasswordResetToken {
-  userId    BigInt    @map("user_id") @db.UnsignedBigInt
+  userId    String    @map("user_id") @db.VarChar(36)
   email     String    @db.VarChar(255)
   token     String    @unique @map("token") @db.VarChar(255)
   usedAt    DateTime? @map("used_at") @db.DateTime(3)
@@ -123,7 +123,7 @@ model PasswordResetToken {
 // OAuth provider connections for social login
 model OauthConnection {
   id             Int       @id @default(autoincrement())
-  userId         BigInt    @map("user_id") @db.UnsignedBigInt
+  userId         String    @map("user_id") @db.VarChar(36)
   provider       String    @db.VarChar(50)
   providerId     String    @map("provider_id") @db.VarChar(255)
   email          String?   @db.VarChar(255)
