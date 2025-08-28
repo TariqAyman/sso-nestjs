@@ -72,6 +72,8 @@ class RegisterRequestDto {
   @IsOptional()
   @IsString()
   language?: string;
+
+  organizationId: bigint; // This will be set from context/request
 }
 
 class ForgotPasswordDto {
@@ -106,7 +108,9 @@ export class AuthController {
   @ApiResponse({ status: 409, description: "User already exists" })
   async register(
     @Body(ValidationPipe) registerDto: RegisterRequestDto
-  ): Promise<{ message: string; userId: number }> {
+  ): Promise<{ message: string; userId: bigint }> {
+    // TODO: Get organizationId from request context or authenticated user
+    registerDto.organizationId = BigInt(1); // Default organization for now
     return this.authService.register(registerDto);
   }
 

@@ -9,7 +9,7 @@ import { AxiosResponse } from "axios";
 
 export interface WebhookEvent {
   event: string;
-  userId: number;
+  userId: bigint;
   scope?: string;
   timestamp: string;
   [key: string]: any;
@@ -120,7 +120,7 @@ export class WebhookService {
   }
 
   private async logWebhook(
-    applicationId: number,
+    applicationId: bigint, // Changed from number to bigint
     event: string,
     payload: any,
     options: {
@@ -135,7 +135,8 @@ export class WebhookService {
     await this.prisma.webhookLog.create({
       data: {
         ssoApplicationId: applicationId,
-        event,
+        eventId: event, // Using eventId field
+        eventKey: event, // Using eventKey field
         payload: JSON.stringify(payload),
         status: options.status,
         httpStatusCode: options.httpStatusCode,
@@ -179,7 +180,7 @@ export class WebhookService {
               headers: {
                 "Content-Type": "application/json",
                 "X-Webhook-Signature": signature,
-                "X-Webhook-Event": webhookLog.event,
+                "X-Webhook-Event": webhookLog.eventId, // Changed from event to eventId
                 "User-Agent": "OpenSSO-Webhook/1.0",
               },
               timeout: 10000,
@@ -199,7 +200,7 @@ export class WebhookService {
         });
 
         this.logger.log(
-          `Webhook retry successful for ${webhookLog.ssoApplication.applicationName} event ${webhookLog.event}`
+          `Webhook retry successful for ${webhookLog.ssoApplication.applicationName} event ${webhookLog.eventId}` // Changed from event to eventId
         );
       } catch (error: any) {
         const errorMessage =
@@ -222,7 +223,7 @@ export class WebhookService {
         });
 
         this.logger.error(
-          `Webhook retry failed for ${webhookLog.ssoApplication.applicationName} event ${webhookLog.event}: ${errorMessage}`
+          `Webhook retry failed for ${webhookLog.ssoApplication.applicationName} event ${webhookLog.eventId}: ${errorMessage}` // Changed from event to eventId
         );
       }
     }

@@ -13,7 +13,8 @@ export interface CreateUserDto {
   email: string;
   password: string;
   fullName: string;
-  role?: string;
+  organizationId: bigint;
+  role?: number;
   timezone?: string;
   language?: string;
 }
@@ -22,19 +23,19 @@ export interface UpdateUserDto {
   fullName?: string;
   timezone?: string;
   language?: string;
-  profilePicture?: string;
+  avatar?: string;
   twoFactorEnabled?: boolean;
 }
 
 export interface UserResponse {
-  id: number;
+  id: bigint;
   email: string;
-  fullName: string;
-  verified: boolean;
-  role: string;
-  status: string;
+  fullName: string | null;
+  emailVerified: boolean;
+  role: number;
+  status: number;
   twoFactorEnabled: boolean;
-  profilePicture?: string;
+  avatar?: string;
   timezone?: string;
   language: string;
   lastLoginAt?: Date;
@@ -55,7 +56,8 @@ export class UsersService {
       email,
       password,
       fullName,
-      role = "user",
+      organizationId,
+      role = 0,
       timezone,
       language = "en",
     } = createUserDto;
@@ -80,9 +82,12 @@ export class UsersService {
       throw new BadRequestException("Invalid language code");
     }
 
-    // Check if user already exists
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email: email.toLowerCase() },
+    // Check if user already exists in this organization
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        organizationId,
+        email: email.toLowerCase(),
+      },
     });
 
     if (existingUser) {
@@ -95,10 +100,11 @@ export class UsersService {
     // Create user
     const user = await this.prisma.user.create({
       data: {
+        organizationId,
         email: email.toLowerCase(),
         password: hashedPassword,
         fullName: this.validatorService.sanitizeString(fullName),
-        role,
+        role: typeof role === "string" ? parseInt(role) : role,
         timezone,
         language,
       },
@@ -107,7 +113,7 @@ export class UsersService {
     return this.toUserResponse(user);
   }
 
-  async findById(id: number): Promise<UserResponse | null> {
+  async findById(id: bigint): Promise<UserResponse | null> {
     const user = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -115,14 +121,38 @@ export class UsersService {
     return user ? this.toUserResponse(user) : null;
   }
 
-  async findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
+  async findByEmail(
+    email: string,
+    organizationId?: bigint
+  ): Promise<User | null> {
+    if (organizationId) {
+      return this.prisma.user.findFirst({
+        where: {
+          email: email.toLowerCase(),
+          organizationId,
+        },
+      });
+    }
+    // Fallback for backward compatibility - find first user with this email
+    return this.prisma.user.findFirst({
       where: { email: email.toLowerCase() },
     });
   }
 
-  async findByEmailWithPassword(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
+  async findByEmailWithPassword(
+    email: string,
+    organizationId?: bigint
+  ): Promise<User | null> {
+    if (organizationId) {
+      return this.prisma.user.findFirst({
+        where: {
+          email: email.toLowerCase(),
+          organizationId,
+        },
+      });
+    }
+    // Fallback for backward compatibility - find first user with this email
+    return this.prisma.user.findFirst({
       where: { email: email.toLowerCase() },
     });
   }
@@ -170,8 +200,8 @@ export class UsersService {
       updateData.language = updateUserDto.language;
     }
 
-    if (updateUserDto.profilePicture) {
-      updateData.profilePicture = updateUserDto.profilePicture;
+    if (updateUserDto.avatar) {
+      updateData.avatar = updateUserDto.avatar;
     }
 
     if (typeof updateUserDto.twoFactorEnabled === "boolean") {
@@ -186,7 +216,7 @@ export class UsersService {
     return this.toUserResponse(updatedUser);
   }
 
-  async updatePassword(id: number, newPassword: string): Promise<void> {
+  async updatePassword(id: bigint, newPassword: string): Promise<void> {
     const passwordValidation =
       this.validatorService.isValidPassword(newPassword);
     if (!passwordValidation.isValid) {
@@ -206,19 +236,18 @@ export class UsersService {
     });
   }
 
-  async verifyUser(id: number): Promise<UserResponse> {
+  async verifyUser(id: bigint): Promise<UserResponse> {
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data: {
-        verified: true,
-        verifiedAt: new Date(),
+        emailVerifiedAt: new Date(),
       },
     });
 
     return this.toUserResponse(updatedUser);
   }
 
-  async updateLoginAttempts(id: number, attempts: number): Promise<void> {
+  async updateLoginAttempts(id: bigint, attempts: number): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: {
@@ -230,7 +259,7 @@ export class UsersService {
   }
 
   async recordLogin(
-    id: number,
+    id: bigint,
     ipAddress: string,
     userAgent?: string
   ): Promise<void> {
@@ -258,7 +287,7 @@ export class UsersService {
   }
 
   async recordFailedLogin(
-    id: number,
+    id: bigint,
     ipAddress: string,
     userAgent?: string,
     reason?: string
@@ -283,7 +312,7 @@ export class UsersService {
     });
   }
 
-  async isAccountLocked(id: number): Promise<boolean> {
+  async isAccountLocked(id: bigint): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: { lockedUntil: true },
@@ -314,7 +343,7 @@ export class UsersService {
     return this.prisma.user.count({ where });
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: bigint): Promise<void> {
     const user = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -328,10 +357,7 @@ export class UsersService {
     });
   }
 
-  async updateStatus(
-    id: number,
-    status: "active" | "inactive" | "suspended"
-  ): Promise<UserResponse> {
+  async updateStatus(id: bigint, status: number): Promise<UserResponse> {
     const updatedUser = await this.prisma.user.update({
       where: { id },
       data: { status },
@@ -340,7 +366,7 @@ export class UsersService {
     return this.toUserResponse(updatedUser);
   }
 
-  async getTwoFactorSecret(id: number): Promise<string | null> {
+  async getTwoFactorSecret(id: bigint): Promise<string | null> {
     const user = await this.prisma.user.findUnique({
       where: { id },
       select: { twoFactorSecret: true },
@@ -349,21 +375,21 @@ export class UsersService {
     return user?.twoFactorSecret || null;
   }
 
-  async setTwoFactorSecret(id: number, secret: string): Promise<void> {
+  async setTwoFactorSecret(id: bigint, secret: string): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: { twoFactorSecret: secret },
     });
   }
 
-  async enableTwoFactor(id: number): Promise<void> {
+  async enableTwoFactor(id: bigint): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: { twoFactorEnabled: true },
     });
   }
 
-  async disableTwoFactor(id: number): Promise<void> {
+  async disableTwoFactor(id: bigint): Promise<void> {
     await this.prisma.user.update({
       where: { id },
       data: {
@@ -374,7 +400,22 @@ export class UsersService {
   }
 
   private toUserResponse(user: User): UserResponse {
-    const { password, twoFactorSecret, ...userResponse } = user;
-    return userResponse;
+    const { password, twoFactorSecret, ...userData } = user;
+
+    return {
+      id: userData.id,
+      email: userData.email || "",
+      fullName: (userData.fullName as string) || null,
+      emailVerified: !!userData.emailVerifiedAt,
+      role: userData.role,
+      status: userData.status || 0,
+      twoFactorEnabled: !!userData.twoFactorEnabled,
+      avatar: userData.avatar || undefined,
+      timezone: userData.timezone || undefined,
+      language: userData.language || "en",
+      lastLoginAt: userData.lastLoginAt || undefined,
+      createdAt: userData.createdAt || new Date(),
+      updatedAt: userData.updatedAt || new Date(),
+    };
   }
 }

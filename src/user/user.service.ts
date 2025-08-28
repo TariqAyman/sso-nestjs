@@ -6,20 +6,22 @@ import { PrismaService } from "../common/prisma/prisma.service";
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async findById(id: number): Promise<User | null> {
+  async findById(id: bigint): Promise<User | null> {
     return this.prisma.user.findUnique({
       where: { id },
     });
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({
+    // Since email is no longer unique without organizationId, we need to handle this differently
+    // For now, we'll use the first match but ideally should include organizationId
+    return this.prisma.user.findFirst({
       where: { email },
     });
   }
 
   async updateLastLogin(
-    id: number,
+    id: bigint,
     ipAddress: string,
     userAgent?: string
   ): Promise<void> {

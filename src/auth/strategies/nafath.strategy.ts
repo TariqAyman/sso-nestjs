@@ -36,19 +36,20 @@ export class NafathStrategy extends PassportStrategy(Strategy, "nafath") {
     this.callbackSecret = this.configService.get("NAFATH_CALLBACK_SECRET");
   }
 
-  async authenticate(req: Request): Promise<any> {
+  // Required by PassportStrategy for custom strategy
+  async validate(req: Request): Promise<any> {
     try {
       const { transactionId } = req.body;
 
       if (!transactionId) {
-        return this.fail("Transaction ID is required", 400);
+        throw new Error("Transaction ID is required");
       }
 
       // Verify the transaction with Nafath
       const profile = await this.verifyTransaction(transactionId);
 
       if (!profile) {
-        return this.fail("Invalid or expired transaction", 401);
+        throw new Error("Invalid or expired transaction");
       }
 
       const user = {
@@ -64,9 +65,9 @@ export class NafathStrategy extends PassportStrategy(Strategy, "nafath") {
         transactionId: profile.transactionId,
       };
 
-      return this.success(user);
+      return user;
     } catch (error) {
-      return this.error(error);
+      throw error;
     }
   }
 

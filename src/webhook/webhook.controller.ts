@@ -111,7 +111,7 @@ export class WebhookController {
       where: {
         id,
         ssoApplication: {
-          userId: req.user.id,
+          organizationId: req.user.id, // Changed from userId to organizationId
         },
       },
       include: {
@@ -142,7 +142,7 @@ export class WebhookController {
       where: {
         id,
         ssoApplication: {
-          userId: req.user.id,
+          organizationId: req.user.id, // Changed from userId to organizationId
         },
         status: "failed",
       },
@@ -181,7 +181,7 @@ export class WebhookController {
       by: ["status"],
       where: {
         ssoApplication: {
-          userId: req.user.id,
+          organizationId: req.user.id, // Changed from userId to organizationId
         },
       },
       _count: {
@@ -192,7 +192,7 @@ export class WebhookController {
     const recentActivity = await this.prisma.webhookLog.findMany({
       where: {
         ssoApplication: {
-          userId: req.user.id,
+          organizationId: req.user.id, // Changed from userId to organizationId
         },
       },
       take: 10,

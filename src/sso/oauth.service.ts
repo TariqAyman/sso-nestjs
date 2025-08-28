@@ -45,6 +45,20 @@ export interface UserInfoResponse {
   email_verified: boolean;
 }
 
+// Helper function to convert JsonValue to string
+function jsonValueToString(value: any): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 @Injectable()
 export class OAuthService {
   private readonly logger = new Logger(OAuthService.name);
@@ -60,7 +74,7 @@ export class OAuthService {
 
   async authorize(
     request: AuthorizeRequest,
-    userId: number
+    userId: bigint
   ): Promise<{ code: string; state?: string }> {
     // Validate OAuth 2.0 authorization request
     if (request.response_type !== "code") {
@@ -96,9 +110,10 @@ export class OAuthService {
     // Store authorization code
     await this.prisma.authorizationCode.create({
       data: {
+        id: this.cryptoService.generateSecureToken(32), // Generate unique ID
         code: authCode,
         userId,
-        applicationId: application.id,
+        ssoApplicationId: application.id,
         redirectUri: request.redirect_uri,
         scope: requestedScopes.join(" "),
         expiresAt,
@@ -160,7 +175,7 @@ export class OAuthService {
       throw new UnauthorizedException("Authorization code has expired");
     }
 
-    if (authCode.applicationId !== application.id) {
+    if (authCode.ssoApplicationId !== application.id) {
       throw new UnauthorizedException(
         "Authorization code does not belong to this application"
       );
@@ -189,9 +204,10 @@ export class OAuthService {
       // Store refresh token
       await this.prisma.refreshToken.create({
         data: {
+          id: this.cryptoService.generateSecureToken(32), // Generate unique ID
           token: refreshToken,
           userId: authCode.userId,
-          applicationId: application.id,
+          ssoApplicationId: application.id,
           scope: authCode.scope,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
         },
@@ -268,7 +284,7 @@ export class OAuthService {
       throw new UnauthorizedException("Refresh token has expired");
     }
 
-    if (refreshToken.applicationId !== application.id) {
+    if (refreshToken.ssoApplicationId !== application.id) {
       throw new UnauthorizedException(
         "Refresh token does not belong to this application"
       );
@@ -314,7 +330,7 @@ export class OAuthService {
   async getUserInfo(accessToken: string): Promise<UserInfoResponse> {
     try {
       const decoded = this.jwtService.verify(accessToken);
-      const userId = parseInt(decoded.sub, 10);
+      const userId = BigInt(decoded.sub);
 
       const user = await this.userService.findById(userId);
 
@@ -322,14 +338,21 @@ export class OAuthService {
         throw new UnauthorizedException("User not found");
       }
 
+      const fullName = jsonValueToString(user.fullName);
+      const firstName = jsonValueToString(user.firstName);
+      const lastName = jsonValueToString(user.lastName);
+
       return {
         sub: userId.toString(),
         email: user.email,
-        name: user.fullName || `${user.firstName} ${user.lastName}`.trim(),
-        given_name: user.firstName,
-        family_name: user.lastName,
+        name:
+          fullName ||
+          `${firstName || ""} ${lastName || ""}`.trim() ||
+          "Unknown User",
+        given_name: firstName,
+        family_name: lastName,
         picture: user.avatar,
-        email_verified: user.emailVerified,
+        email_verified: !!user.emailVerifiedAt,
       };
     } catch (error) {
       throw new UnauthorizedException("Invalid access token");

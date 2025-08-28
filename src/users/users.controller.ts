@@ -114,7 +114,13 @@ export class UsersController {
   async create(
     @Body(ValidationPipe) createUserDto: CreateUserRequestDto
   ): Promise<UserResponse> {
-    return this.usersService.create(createUserDto);
+    // Add default organizationId for user creation
+    const createUserData: CreateUserDto = {
+      ...createUserDto,
+      organizationId: BigInt(1), // Default organization
+      role: createUserDto.role ? parseInt(createUserDto.role) : undefined, // Convert string to number
+    };
+    return this.usersService.create(createUserData);
   }
 
   @Get()
@@ -144,7 +150,8 @@ export class UsersController {
       ? {
           OR: [
             { email: { contains: search } },
-            { fullName: { contains: search } },
+            // For JSON field fullName, we need to use string_contains for JSON search
+            { fullName: { string_contains: search } },
           ],
         }
       : {};
@@ -184,7 +191,7 @@ export class UsersController {
   @ApiResponse({ status: 200, description: "User retrieved successfully" })
   @ApiResponse({ status: 404, description: "User not found" })
   async findOne(@Param("id", ParseIntPipe) id: number): Promise<UserResponse> {
-    return this.usersService.findById(id);
+    return this.usersService.findById(BigInt(id)); // Convert number to bigint
   }
 
   @Put("profile")
@@ -239,7 +246,16 @@ export class UsersController {
     @Param("id", ParseIntPipe) id: number,
     @Body(ValidationPipe) updateStatusDto: UpdateStatusDto
   ): Promise<UserResponse> {
-    return this.usersService.updateStatus(id, updateStatusDto.status);
+    // Map string status to number
+    const statusMap = {
+      active: 1,
+      inactive: 0,
+      suspended: 2,
+    };
+    return this.usersService.updateStatus(
+      BigInt(id),
+      statusMap[updateStatusDto.status]
+    ); // Convert number to bigint and map status
   }
 
   @Delete(":id")
@@ -252,7 +268,7 @@ export class UsersController {
   async remove(
     @Param("id", ParseIntPipe) id: number
   ): Promise<{ message: string }> {
-    await this.usersService.delete(id);
+    await this.usersService.delete(BigInt(id)); // Convert number to bigint
     return { message: "User deleted successfully" };
   }
 

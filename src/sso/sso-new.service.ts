@@ -5,7 +5,7 @@ import {
   BadRequestException,
   Logger,
 } from "@nestjs/common";
-import { SsoApplication, Prisma } from "@prisma/client";
+import { SsoApplication, SsoApplicationStatus, Prisma } from "@prisma/client";
 import { PrismaService } from "../common/prisma/prisma.service";
 import { CryptoService } from "../common/services/crypto.service";
 import { ValidatorService } from "../common/services/validator.service";
@@ -108,7 +108,7 @@ export class SsoService {
     try {
       const application = await this.prisma.ssoApplication.create({
         data: {
-          userId,
+          organizationId: userId, // Changed from userId to organizationId
           applicationName: this.validatorService.sanitizeString(
             createDto.applicationName
           ),
@@ -155,8 +155,8 @@ export class SsoService {
     const { skip = 0, take = 10, search, status } = params;
 
     const where: Prisma.SsoApplicationWhereInput = {
-      userId,
-      ...(status && { status }),
+      organizationId: userId, // Changed from userId to organizationId
+      ...(status && { status: status as SsoApplicationStatus }),
       ...(search && {
         OR: [
           { applicationName: { contains: search } },
@@ -184,7 +184,7 @@ export class SsoService {
   async findById(id: number, userId?: number): Promise<SsoApplicationResponse> {
     const where: Prisma.SsoApplicationWhereInput = { id };
     if (userId) {
-      where.userId = userId;
+      where.organizationId = userId; // Changed from userId to organizationId
     }
 
     const application = await this.prisma.ssoApplication.findFirst({ where });
@@ -214,7 +214,7 @@ export class SsoService {
     updateDto: UpdateSsoApplicationDto
   ): Promise<SsoApplicationResponse> {
     const application = await this.prisma.ssoApplication.findFirst({
-      where: { id, userId },
+      where: { id, organizationId: userId }, // Changed from userId to organizationId
     });
 
     if (!application) {
@@ -288,7 +288,8 @@ export class SsoService {
       updateData.tokenExpirationTime = updateDto.tokenExpirationTime;
     if (typeof updateDto.refreshTokenEnabled === "boolean")
       updateData.refreshTokenEnabled = updateDto.refreshTokenEnabled;
-    if (updateDto.status) updateData.status = updateDto.status;
+    if (updateDto.status)
+      updateData.status = updateDto.status as SsoApplicationStatus;
 
     const updatedApplication = await this.prisma.ssoApplication.update({
       where: { id },
@@ -304,7 +305,7 @@ export class SsoService {
 
   async deleteApplication(id: number, userId: number): Promise<void> {
     const application = await this.prisma.ssoApplication.findFirst({
-      where: { id, userId },
+      where: { id, organizationId: userId }, // Changed from userId to organizationId
     });
 
     if (!application) {
@@ -325,7 +326,7 @@ export class SsoService {
     userId: number
   ): Promise<{ clientSecret: string }> {
     const application = await this.prisma.ssoApplication.findFirst({
-      where: { id, userId },
+      where: { id, organizationId: userId }, // Changed from userId to organizationId
     });
 
     if (!application) {
@@ -350,6 +351,9 @@ export class SsoService {
     application: SsoApplication
   ): SsoApplicationResponse {
     const { clientSecret, webhookSecret, ...response } = application;
-    return response;
+    return {
+      ...response,
+      id: Number(response.id), // Convert BigInt to number
+    };
   }
 }

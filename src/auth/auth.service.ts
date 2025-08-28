@@ -23,17 +23,18 @@ export interface RegisterDto {
   email: string;
   password: string;
   fullName: string;
+  organizationId: bigint;
   timezone?: string;
   language?: string;
 }
 
 export interface AuthResponse {
   user: {
-    id: number;
+    id: bigint;
     email: string;
-    fullName: string;
-    verified: boolean;
-    role: string;
+    fullName: string | null;
+    emailVerified: boolean;
+    role: number;
     twoFactorEnabled: boolean;
   };
   accessToken: string;
@@ -41,10 +42,24 @@ export interface AuthResponse {
   expiresIn: number;
 }
 
+// Helper function to convert JsonValue to string
+function jsonValueToString(value: any): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 export interface JwtPayload {
-  sub: number;
+  sub: string; // Convert bigint to string for JWT
   email: string;
-  role: string;
+  role: number;
   iat?: number;
   exp?: number;
 }
@@ -108,7 +123,8 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    if (user.status !== "active") {
+    if (user.status !== 1) {
+      // 1 = active status
       throw new UnauthorizedException("Account is not active");
     }
 
@@ -117,7 +133,7 @@ export class AuthService {
 
     // Generate tokens
     const payload: JwtPayload = {
-      sub: user.id,
+      sub: user.id.toString(), // Convert bigint to string for JWT
       email: user.email,
       role: user.role,
     };
@@ -138,10 +154,10 @@ export class AuthService {
       user: {
         id: user.id,
         email: user.email,
-        fullName: user.fullName,
-        verified: user.verified,
+        fullName: jsonValueToString(user.fullName),
+        emailVerified: !!user.emailVerifiedAt,
         role: user.role,
-        twoFactorEnabled: user.twoFactorEnabled,
+        twoFactorEnabled: !!user.twoFactorEnabled,
       },
       accessToken,
       refreshToken,
@@ -151,19 +167,19 @@ export class AuthService {
 
   async register(
     registerDto: RegisterDto
-  ): Promise<{ message: string; userId: number }> {
+  ): Promise<{ message: string; userId: bigint }> {
     const user = await this.usersService.create(registerDto);
 
     // Generate activation token
     const token = this.cryptoService.generateSecureToken();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    await this.prisma.userActivation.create({
+    await this.prisma.passwordResetToken.create({
       data: {
         userId: user.id,
+        email: user.email,
         token,
-        type: "email",
-        expiresAt,
+        expiredAt: expiresAt,
       },
     });
 
@@ -171,7 +187,7 @@ export class AuthService {
     await this.emailService.sendActivationEmail(
       user.email,
       token,
-      user.fullName
+      jsonValueToString(user.fullName)
     );
 
     this.logger.log(`User registered: ${user.email}`);
@@ -184,7 +200,7 @@ export class AuthService {
   }
 
   async activateAccount(token: string): Promise<{ message: string }> {
-    const activation = await this.prisma.userActivation.findUnique({
+    const activation = await this.prisma.passwordResetToken.findUnique({
       where: { token },
       include: { user: true },
     });
@@ -197,7 +213,7 @@ export class AuthService {
       throw new BadRequestException("Activation token has already been used");
     }
 
-    if (activation.expiresAt < new Date()) {
+    if (activation.expiredAt && activation.expiredAt < new Date()) {
       throw new BadRequestException("Activation token has expired");
     }
 
@@ -206,11 +222,10 @@ export class AuthService {
       this.prisma.user.update({
         where: { id: activation.userId },
         data: {
-          verified: true,
-          verifiedAt: new Date(),
+          emailVerifiedAt: new Date(),
         },
       }),
-      this.prisma.userActivation.update({
+      this.prisma.passwordResetToken.update({
         where: { token },
         data: { usedAt: new Date() },
       }),
@@ -219,7 +234,7 @@ export class AuthService {
     // Send welcome email
     await this.emailService.sendWelcomeEmail(
       activation.user.email,
-      activation.user.fullName
+      jsonValueToString(activation.user.fullName)
     );
 
     this.logger.log(`Account activated: ${activation.user.email}`);
@@ -241,11 +256,12 @@ export class AuthService {
     const token = this.cryptoService.generateSecureToken();
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    await this.prisma.forgotPassword.create({
+    await this.prisma.passwordResetToken.create({
       data: {
         userId: user.id,
+        email: user.email,
         token,
-        expiresAt,
+        expiredAt: expiresAt,
       },
     });
 
@@ -253,7 +269,7 @@ export class AuthService {
     await this.emailService.sendPasswordResetEmail(
       user.email,
       token,
-      user.fullName
+      jsonValueToString(user.fullName)
     );
 
     this.logger.log(`Password reset requested for: ${user.email}`);
@@ -267,7 +283,7 @@ export class AuthService {
     token: string,
     newPassword: string
   ): Promise<{ message: string }> {
-    const resetRequest = await this.prisma.forgotPassword.findUnique({
+    const resetRequest = await this.prisma.passwordResetToken.findUnique({
       where: { token },
       include: { user: true },
     });
@@ -280,14 +296,14 @@ export class AuthService {
       throw new BadRequestException("Reset token has already been used");
     }
 
-    if (resetRequest.expiresAt < new Date()) {
+    if (resetRequest.expiredAt && resetRequest.expiredAt < new Date()) {
       throw new BadRequestException("Reset token has expired");
     }
 
     // Update password and mark token as used
     await this.prisma.$transaction(async (tx) => {
       await this.usersService.updatePassword(resetRequest.userId, newPassword);
-      await tx.forgotPassword.update({
+      await tx.passwordResetToken.update({
         where: { token },
         data: { usedAt: new Date() },
       });
@@ -303,14 +319,15 @@ export class AuthService {
   ): Promise<{ accessToken: string; expiresIn: number }> {
     try {
       const payload = this.jwtService.verify(refreshToken);
-      const user = await this.usersService.findById(payload.sub);
+      const user = await this.usersService.findById(BigInt(payload.sub));
 
-      if (!user || user.status !== "active") {
+      if (!user || user.status !== 1) {
+        // 1 = active status
         throw new UnauthorizedException("Invalid refresh token");
       }
 
       const newPayload: JwtPayload = {
-        sub: user.id,
+        sub: user.id.toString(),
         email: user.email,
         role: user.role,
       };
@@ -324,24 +341,28 @@ export class AuthService {
     }
   }
 
-  async logout(userId: number): Promise<{ message: string }> {
+  async logout(userId: bigint): Promise<{ message: string }> {
     // In a more complex setup, you might want to blacklist the token
     // For now, we'll just log the logout event
     this.logger.log(`User ${userId} logged out`);
     return { message: "Logged out successfully" };
   }
 
-  async validateJwtPayload(payload: JwtPayload): Promise<User | null> {
-    const user = await this.usersService.findById(payload.sub);
+  async validateJwtPayload(payload: JwtPayload): Promise<any | null> {
+    const user = await this.usersService.findById(BigInt(payload.sub));
 
-    if (!user || user.status !== "active") {
+    if (!user || user.status !== 1) {
+      // 1 = active status
       return null;
     }
 
+    // Return a simplified user object for JWT validation
     return {
-      ...user,
-      password: "", // Don't expose password in JWT payload
-    } as User;
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+    };
   }
 
   private getTokenExpirationTime(): number {
@@ -366,15 +387,14 @@ export class AuthService {
       };
     }
 
-    if (user.verified) {
+    if (user.emailVerifiedAt) {
       throw new BadRequestException("Account is already verified");
     }
 
     // Deactivate existing tokens
-    await this.prisma.userActivation.updateMany({
+    await this.prisma.passwordResetToken.updateMany({
       where: {
         userId: user.id,
-        type: "email",
         usedAt: null,
       },
       data: { usedAt: new Date() },
@@ -384,12 +404,12 @@ export class AuthService {
     const token = this.cryptoService.generateSecureToken();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    await this.prisma.userActivation.create({
+    await this.prisma.passwordResetToken.create({
       data: {
         userId: user.id,
+        email: user.email,
         token,
-        type: "email",
-        expiresAt,
+        expiredAt: expiresAt,
       },
     });
 
@@ -397,7 +417,7 @@ export class AuthService {
     await this.emailService.sendActivationEmail(
       user.email,
       token,
-      user.fullName
+      jsonValueToString(user.fullName)
     );
 
     this.logger.log(`Activation email resent to: ${user.email}`);
@@ -484,10 +504,10 @@ export class AuthService {
         user: {
           id: user.id,
           email: user.email,
-          fullName: user.fullName,
-          verified: user.verified,
+          fullName: jsonValueToString(user.fullName),
+          emailVerified: !!user.emailVerifiedAt,
           role: user.role,
-          twoFactorEnabled: user.twoFactorEnabled,
+          twoFactorEnabled: !!user.twoFactorEnabled,
         },
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
@@ -531,10 +551,10 @@ export class AuthService {
         user: {
           id: user.id,
           email: user.email,
-          fullName: user.fullName,
-          verified: user.verified,
+          fullName: jsonValueToString(user.fullName),
+          emailVerified: !!user.emailVerifiedAt,
           role: user.role,
-          twoFactorEnabled: user.twoFactorEnabled,
+          twoFactorEnabled: !!user.twoFactorEnabled,
         },
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
@@ -563,7 +583,7 @@ export class AuthService {
         where: { id: user.id },
         data: {
           fullName: profile.fullNameEn || profile.fullNameAr || user.fullName,
-          verified: true, // Nafath users are verified by default
+          emailVerifiedAt: new Date(), // Nafath users are verified by default
           lastLoginAt: new Date(),
         },
       });
@@ -577,13 +597,13 @@ export class AuthService {
 
       user = await this.prisma.user.create({
         data: {
+          organizationId: BigInt(1), // Default organization
           email,
           password: "", // Nafath users don't need passwords
           fullName,
-          verified: true,
-          emailVerified: !!profile.email, // Only verified if we have real email
-          role: "user",
-          status: "active",
+          emailVerifiedAt: profile.email ? new Date() : null, // Only verified if we have real email
+          role: 0, // 0 = user role
+          status: 1, // 1 = active status
           language: profile.fullNameAr ? "ar" : "en",
           lastLoginAt: new Date(),
         },
@@ -616,12 +636,12 @@ export class AuthService {
     return user;
   }
 
-  private async generateTokens(user: User): Promise<{
+  private async generateTokens(user: any): Promise<{
     accessToken: string;
     refreshToken: string;
   }> {
     const payload: JwtPayload = {
-      sub: user.id,
+      sub: user.id.toString(),
       email: user.email,
       role: user.role,
     };
