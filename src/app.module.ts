@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { Module, NestModule, MiddlewareConsumer } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { CacheModule } from "@nestjs/cache-manager";
@@ -11,6 +11,7 @@ import { UserModule } from "./user/user.module";
 import { WebhookModule } from "./webhook/webhook.module";
 import { TaskModule } from "./tasks/task.module";
 import { CommonModule } from "./common/common.module";
+import { HttpLoggingMiddleware } from "./common/middleware/http-logging.middleware";
 
 @Module({
   imports: [
@@ -48,4 +49,8 @@ import { CommonModule } from "./common/common.module";
     TaskModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(HttpLoggingMiddleware).forRoutes("*"); // Apply to all routes
+  }
+}

@@ -7,6 +7,7 @@ import helmet from "helmet";
 import * as compression from "compression";
 import rateLimit from "express-rate-limit";
 import { AppModule } from "./app.module";
+import { RequestLoggingInterceptor } from "./common/interceptors/request-logging.interceptor";
 
 async function bootstrap() {
   const logger = new Logger("Bootstrap");
@@ -58,6 +59,10 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     })
   );
+
+  // Global request logging interceptor
+  const loggingInterceptor = app.get(RequestLoggingInterceptor);
+  app.useGlobalInterceptors(loggingInterceptor);
 
   // Global prefix
   app.setGlobalPrefix("api/v1");
