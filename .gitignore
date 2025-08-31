@@ -97,5 +97,5 @@ Thumbs.db
 *.sqlite3
 
 # Prisma
-prisma/migrations/
+# prisma/migrations/
 /generated/prisma
