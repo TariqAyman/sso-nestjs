@@ -91,19 +91,21 @@ This directory contains modular documentation for the Prisma schema to improve r
 - Certificate handling
 - Tenant-specific SAML settings
 
-### 7. Queue & Background Processing
+### 7. Task Scheduling & Background Processing
 
-**Purpose**: Laravel-compatible background job processing
+**Purpose**: Automated background tasks and scheduled operations
 
-- `Job`: Background job queue
-- `FailedJob`: Failed job debugging
-- `LogWebhook`: Webhook delivery tracking
+- `Job`: Background job queue with payload and retry management
+- `FailedJob`: Failed job debugging and recovery
+- `WebhookLog`: Event delivery tracking with automatic retries
 
 **Features**:
 
-- Async job processing
-- Webhook reliability
-- Error tracking and retry logic
+- Cron-based task scheduling with @nestjs/schedule
+- Webhook retry automation (every 5 minutes)
+- Daily cleanup of old webhook logs
+- Extensible task framework for custom operations
+- Comprehensive logging and error handling
 
 ## 🔧 Usage Guidelines
 

@@ -16,6 +16,20 @@ Quick reference guide to all schema modules in this directory based on the new S
 | **Queue & Jobs**          | `jobs.prisma`             | 2 models | Background job processing             |
 | **Webhooks & Logging**    | `webhooks.prisma`         | 1 model  | Event delivery and retry management   |
 
+## 📚 Documentation Index
+
+| Documentation File           | Purpose                              |
+| ---------------------------- | ------------------------------------ |
+| **README.md**                | Schema organization overview         |
+| **INDEX.md**                 | Quick reference and navigation guide |
+| **IMPLEMENTATION_GUIDE.md**  | Split schema implementation details  |
+| **DATABASE_MIGRATION.md**    | Database migration and setup guide   |
+| **NESTJS_IMPLEMENTATION.md** | NestJS application architecture      |
+| **TASK_SCHEDULING.md**       | Background task processing system    |
+| **NAFATH_INTEGRATION.md**    | Nafath SSO integration guide         |
+| **OAUTH_SETUP_GUIDE.md**     | OAuth provider configuration         |
+| **PRISMA_IMPLEMENTATION.md** | Prisma ORM usage and best practices  |
+
 ## 🔍 Quick Model Finder
 
 ### Core System Architecture
@@ -97,9 +111,16 @@ Quick reference guide to all schema modules in this directory based on the new S
 
 ### Background Processing
 
-- `Job` - Background job queue
-- `FailedJob` - Failed job tracking
-- `LogWebhook` - Webhook delivery logs
+- `Job` - Background job queue with automated scheduling
+- `FailedJob` - Failed job tracking and recovery
+- `WebhookLog` - Webhook delivery logs with retry automation
+
+### Task Scheduling Features
+
+- Automated webhook retry system (every 5 minutes)
+- Daily cleanup of old webhook logs
+- Extensible cron-based task framework
+- Comprehensive logging and monitoring
 
 ## 🚀 Quick Actions
 
