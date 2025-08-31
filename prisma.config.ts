@@ -1,10 +1,12 @@
+// prisma.config.ts
 import path from "node:path";
-import dotenv from "dotenv";
-import type { PrismaConfig } from "prisma";
+import { defineConfig } from "prisma/config";
 
 // Load environment variables from .env file
-dotenv.config();
+import { config } from "dotenv";
+config();
 
-export default {
-  schema: path.join("prisma", "schema"),
-} satisfies PrismaConfig;
+export default defineConfig({
+  // You can target a folder (multi-file schema) or a single file.
+  schema: path.join("prisma", "schema"), // or "prisma/models"
+});

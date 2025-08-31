@@ -1,0 +1,36 @@
+// =========================================================================
+// QUEUE & BACKGROUND JOBS SCHEMA
+// =========================================================================
+// Background job processing system for asynchronous task handling
+// Includes job queue management and failure tracking
+// =========================================================================
+
+// Background job queue
+model Job {
+  id          String @id @default(uuid()) @db.VarChar(36)
+  queue       String @db.VarChar(255)
+  payload     String @db.LongText
+  attempts    Int    @db.UnsignedTinyInt
+  reservedAt  Int?   @map("reserved_at") @db.UnsignedInt
+  availableAt Int    @map("available_at") @db.UnsignedInt
+  createdAt   Int    @map("created_at") @db.UnsignedInt
+
+  @@index([queue], map: "jobs_queue_index")
+  @@index([availableAt], map: "jobs_available_idx")
+  @@map("jobs")
+}
+
+// Failed job tracking
+model FailedJob {
+  id         String   @id @default(uuid()) @db.VarChar(36)
+  uuid       String   @unique @db.VarChar(255)
+  connection String   @db.Text
+  queue      String   @db.Text
+  payload    String   @db.LongText
+  exception  String   @db.LongText
+  failedAt   DateTime @default(now()) @map("failed_at")
+
+  @@unique([uuid], map: "failed_jobs_uuid_unique")
+  @@index([failedAt], map: "failed_jobs_failed_at_idx")
+  @@map("failed_jobs")
+}

@@ -1,0 +1,25 @@
+// =========================================================================
+// ORGANIZATIONS SCHEMA
+// =========================================================================
+// Organization management models for multi-tenant architecture
+// Handles organization settings, configurations, and application grouping
+// =========================================================================
+
+// Organization management for multi-tenant architecture
+model Organization {
+  id                     String    @id @default(uuid()) @db.VarChar(36)
+  name                   String    @unique @db.VarChar(255)
+  url                    String    @unique @db.VarChar(255)
+  sharedUserApplications Boolean   @default(false) @map("shared_user_applications")
+  settings               Json?
+  createdAt              DateTime? @map("created_at")
+  updatedAt              DateTime? @map("updated_at")
+
+  // Relations
+  users              User[]
+  ssoApplications    SsoApplication[]
+  ModelHasPermission ModelHasPermission[]
+  ModelHasRole       ModelHasRole[]
+
+  @@map("organizations")
+}

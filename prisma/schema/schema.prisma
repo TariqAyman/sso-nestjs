@@ -1,8 +1,31 @@
+// =========================================================================
+// PRISMA SCHEMA - COMPLETE SSO & USER MANAGEMENT SYSTEM (NEW VERSION)
+// =========================================================================
+// Main schema file that references all split schema files
+// This schema is based on the new SQL database structure and organized
+// into logical sections for better maintainability and readability
+// =========================================================================
+
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
+// =========================================================================
+// SPLIT SCHEMA FILES
+// =========================================================================
+// All models are split into separate files for better organization:
+// - organizations.prisma: Organization model
+// - sso-applications.prisma: SsoApplication model and enum
+// - users.prisma: User, LastLogin, PasswordResetToken, OauthConnection models
+// - oauth.prisma: AuthorizationCode, RefreshToken, PersonalAccessToken models
+// - permissions.prisma: Permission, Role, ModelHasPermission, ModelHasRole, RoleHasPermission models
+// - menus.prisma: Menu model and MenuStatus enum
+// - jobs.prisma: Job, FailedJob models
+// - saml.prisma: Saml2Tenant model
+// - webhooks.prisma: WebhookLog model
+// =========================================================================
